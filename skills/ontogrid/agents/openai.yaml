@@ -1,0 +1,7 @@
+interface:
+  display_name: "OntoGrid"
+  short_description: "OntoGrid MVP domain and repo guide"
+  default_prompt: "Use $ontogrid to work within the OntoGrid Asset Health MVP contracts and repository rules."
+
+policy:
+  allow_implicit_invocation: true

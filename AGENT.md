@@ -1,106 +1,58 @@
-# CLAUDE.md - OntoGrid Project Context
+# OntoGrid Agent Context
 
-## Projeto
-OntoGrid - Plataforma Ontologica de Dados e Decisao para o Setor Eletrico Brasileiro.
+Este arquivo e a referencia canônica para coding agents neste repositório.
 
-## MVP Atual: Asset Health
-Vigilancia de equipamentos criticos (transformadores, geradores, disjuntores) com smart alerting, deteccao de anomalias e health score. Foco em geradoras e transmissoras.
+## Objetivo do produto
 
-## Contexto de Dominio
-- Setor eletrico brasileiro: ONS (operador), CCEE (comercializacao), ANEEL (regulador)
-- Entidades principais: ativos (transformadores, geradores), subestacoes, linhas, agentes
-- Series temporais SCADA: temperatura, vibracoes, corrente, tensao, oleo isolante
-- Indicadores regulatorios: DEC/FEC, disponibilidade, indisponibilidade
+Construir o MVP v0.1 de **Asset Health** para o setor elétrico brasileiro. O produto precisa unificar cadastro de ativos, ingestão de telemetria, health score, alertas, casos e um grafo básico de topologia.
 
-## Arquitetura
-- 8 camadas (A-H), MVP usa A, B, C, D, E, F, G parcialmente
-- Energy Graph Brasil: ontologia em Neo4j que unifica entidades do setor
-- Backend: Python 3.12 + FastAPI
-- Frontend: Next.js 14 + TypeScript + Tailwind CSS
-- DBs: TimescaleDB (time-series), Neo4j (grafo), Redis (cache)
-- ML: scikit-learn, Prophet, PyOD para anomalias
-- Queue: Celery + Redis
+## Decisões fechadas do v0.1
 
-## Estrutura de Pastas
-```
-src/backend/         # FastAPI app
-  api/               # Rotas REST
-  core/              # Config, security, database
-  models/            # SQLAlchemy + Pydantic schemas
-  services/          # Business logic
-  graph/             # Neo4j Energy Graph
-  ingestion/         # Data pipeline connectors
-  analytics/         # ML models, anomaly detection
-  workflows/         # Case management, SOPs
-src/frontend/        # Next.js app
-  app/               # App router
-  components/        # React components
-  lib/               # API client, utils
-```
+- API HTTP **REST-only**.
+- Autenticação JWT com `tenant_id` no token.
+- `tenant_id` e a chave de isolamento de dados em todas as entidades operacionais.
+- `agent` continua existindo apenas como conceito de domínio do setor elétrico, nao como chave de tenancy.
+- Alertas no MVP sao consumidos por polling; real-time fica para fase posterior.
+- Neo4j entra no v0.1 somente para topologia, vizinhança e impacto.
+- Health score v0 e determinístico, baseado em regras e pesos por tipo de ativo.
+- Anomalia v0 usa threshold e rolling z-score; sem Prophet, sem PyOD, sem ensemble.
 
-## Convencoes de Codigo
+## Fora do escopo do primeiro corte
 
-### Backend (Python)
-- Python 3.12+, type hints obrigatorios
-- FastAPI com Pydantic v2 para validacao
-- Async/await para I/O (database, HTTP)
-- Nomenclatura: snake_case para funcoes/variaveis, PascalCase para classes
-- Docstrings em portugues para logica de negocio, ingles para infra
-- Testes com pytest + pytest-asyncio
-- Linting: ruff
-- Formatacao: black
+- GraphQL.
+- WebSocket e Socket.io como contrato oficial.
+- Forecasting.
+- Mobile dedicado.
+- SMS/push.
+- Mapa geográfico.
+- Workflow rico de casos e knowledge base extensa.
 
-### Frontend (TypeScript)
-- Next.js 14 App Router
-- TypeScript strict mode
-- Componentes funcionais com hooks
-- Tailwind CSS para estilos
-- Nomenclatura: camelCase variaveis, PascalCase componentes
-- Testes com Vitest + Testing Library
-- Linting: ESLint + Prettier
+## Ordem de precedência documental
 
-### Database
-- Migrations com Alembic (PostgreSQL/TimescaleDB)
-- Neo4j Cypher queries em arquivos .cypher separados
-- Naming: tabelas snake_case plural (assets, measurements)
+1. [docs/API_SPEC.md](/C:/Users/tsimoe01/coding/ontogrid/docs/API_SPEC.md)
+2. [docs/DATA_MODEL.md](/C:/Users/tsimoe01/coding/ontogrid/docs/DATA_MODEL.md)
+3. [docs/ARCHITECTURE.md](/C:/Users/tsimoe01/coding/ontogrid/docs/ARCHITECTURE.md)
+4. [docs/MVP_ROADMAP.md](/C:/Users/tsimoe01/coding/ontogrid/docs/MVP_ROADMAP.md)
+5. [docs/USER_STORIES.md](/C:/Users/tsimoe01/coding/ontogrid/docs/USER_STORIES.md)
 
-### Git
-- Conventional commits: feat:, fix:, docs:, refactor:, test:
-- Branch naming: feature/, fix/, docs/
-- PR com descricao e test plan
+## Convenções de implementação
 
-## Comandos Uteis
-```bash
-# Backend
-cd src/backend && uvicorn main:app --reload --port 8000
-pytest tests/ -v
-ruff check .
-black .
+- Backend em FastAPI sob [src/backend/app](/C:/Users/tsimoe01/coding/ontogrid/src/backend/app).
+- Frontend em Next.js App Router sob [src/frontend/app](/C:/Users/tsimoe01/coding/ontogrid/src/frontend/app).
+- Sempre refletir contratos de API primeiro em `docs/API_SPEC.md` antes de expandir o código.
+- Novas tabelas operacionais precisam carregar `tenant_id`.
+- Timestamp externo sempre normalizado para ISO-8601 com timezone.
+- Preferir documentação curta e executável; evitar blueprints especulativos.
 
-# Frontend
-cd src/frontend && npm run dev
-npm run test
-npm run lint
-npm run build
+## Domínio
 
-# Docker
-docker-compose up -d  # Sobe TimescaleDB + Neo4j + Redis
-docker-compose down
+- Ativos alvo iniciais: transformadores, geradores, disjuntores e reatores.
+- Fontes iniciais de dados: cadastro de ativos, medições históricas/operacionais via upload e lote JSON.
+- Entidades principais do MVP: `tenant`, `user`, `asset`, `measurement_point`, `measurement`, `health_score`, `alert`, `case`, `ingestion_job`.
 
-# Migrations
-alembic upgrade head
-alembic revision --autogenerate -m "descricao"
-```
+## Limites do que nao deve ser inferido
 
-## APIs Externas Relevantes
-- ONS Dados Abertos: https://dados.ons.org.br/
-- CCEE: dados de PLD e mercado
-- ANEEL SIGA: cadastro de empreendimentos
-- BDGD: base georreferenciada de distribuidoras
-
-## Regras de Negocio Importantes
-- Hora operativa != hora civil (ONS usa D+1 00:00 a D+1 00:00)
-- PLD tem retificacoes periodicas - sempre versionar
-- Resolucao de identidade: mesmo ativo tem IDs diferentes entre ONS/CCEE/ANEEL
-- Health score: 0-100, baseado em multiplas variaveis SCADA + historico de manutencao
-- Alertas: Critico (>90), Alto (70-90), Medio (50-70), Baixo (<50)
+- Nao reintroduzir GraphQL, Socket.io ou forecasting sem mudar explicitamente a documentação base.
+- Nao trocar `tenant_id` por `agent_id` em modelos operacionais.
+- Nao assumir integrações ONS, ANEEL, OPC-UA ou notificações multicanal como prontas no v0.1.
+- Nao expandir o MVP com novas features “enterprise” sem atualizar roadmap, stories e API spec em conjunto.

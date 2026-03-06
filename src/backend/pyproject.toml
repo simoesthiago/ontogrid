@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontogrid-backend"
+version = "0.1.0"
+description = "OntoGrid MVP backend scaffold"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.135,<0.136",
+  "uvicorn[standard]>=0.34,<0.35",
+  "pydantic>=2.10,<3.0",
+  "pydantic-settings>=2.7,<3.0",
+  "email-validator>=2.2,<3.0",
+  "python-multipart>=0.0.20,<0.1.0",
+  "python-jose[cryptography]>=3.3,<4.0",
+  "sqlalchemy>=2.0,<3.0",
+  "alembic>=1.14,<2.0",
+  "asyncpg>=0.30,<0.31",
+  "redis>=5.2,<6.0",
+  "neo4j>=5.28,<6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+  "httpx>=0.28,<0.29",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
