@@ -24,4 +24,4 @@ def healthz() -> dict[str, str]:
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"message": "OntoGrid API", "docs": "/docs"}
+    return {"message": "OntoGrid Energy Data Hub API", "docs": "/docs"}

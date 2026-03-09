@@ -1,7 +1,7 @@
 # OntoGrid domain summary
 
-- Product: Asset Health for the Brazilian power sector.
-- Initial assets: transformers, generators, breakers, reactors.
-- Initial user value: see risky assets early, act on alerts, track simple cases.
-- Initial data sources: asset catalog and batch telemetry.
-- Domain `agent` is a market/company concept; it is not the application tenancy key.
+- Product: public-first Energy Data Hub for the Brazilian power sector.
+- Initial value: curated public datasets, canonical graph context, dashboards and grounded analytical answers.
+- Initial sources: ANEEL, ONS and CCEE.
+- Public core does not depend on `tenant_id`.
+- Enterprise apps and private data connectors come later on top of the same ontology.

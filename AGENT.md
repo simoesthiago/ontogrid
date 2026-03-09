@@ -1,58 +1,74 @@
 # OntoGrid Agent Context
 
-Este arquivo e a referencia canônica para coding agents neste repositório.
+Este arquivo e a referencia canonica para coding agents neste repositorio.
 
 ## Objetivo do produto
 
-Construir o MVP v0.1 de **Asset Health** para o setor elétrico brasileiro. O produto precisa unificar cadastro de ativos, ingestão de telemetria, health score, alertas, casos e um grafo básico de topologia.
+Construir o MVP publico v1 do **Energy Data Hub** do OntoGrid para o setor eletrico brasileiro. O produto precisa curar e versionar dados publicos de ANEEL, ONS e CCEE, projetar um Energy Graph publico, expor APIs e dashboards e oferecer um copilot analitico grounded nesses dados.
 
-## Decisões fechadas do v0.1
+## Decisoes fechadas do MVP publico
 
 - API HTTP **REST-only**.
-- Autenticação JWT com `tenant_id` no token.
-- `tenant_id` e a chave de isolamento de dados em todas as entidades operacionais.
-- `agent` continua existindo apenas como conceito de domínio do setor elétrico, nao como chave de tenancy.
-- Alertas no MVP sao consumidos por polling; real-time fica para fase posterior.
-- Neo4j entra no v0.1 somente para topologia, vizinhança e impacto.
-- Health score v0 e determinístico, baseado em regras e pesos por tipo de ativo.
-- Anomalia v0 usa threshold e rolling z-score; sem Prophet, sem PyOD, sem ensemble.
+- Dados publicos sao o nucleo do MVP; nao dependemos de SCADA, ERP, OMS ou CMMS do cliente.
+- `tenant_id` nao e a chave central do modelo publico inicial.
+- Auth, se existir, serve para conta, favoritos, historico ou limites de uso, nao para isolar o dataset publico.
+- Neo4j entra no v1 para ontologia publica, navegacao e relacoes setoriais.
+- IA entra como copilot analitico grounded em datasets, metadados e grafo publico.
+- Refresh de dados usa pulls agendados, downloads versionados e crawlers especificos.
+- O slice enterprise fica para a fase seguinte sob o nome **Vigilancia Operacional de Ativos** e outros apps setoriais.
 
 ## Fora do escopo do primeiro corte
 
+- Integracoes privadas de cliente via SCADA, ERP, CMMS, OMS ou GIS.
+- Upload manual de dados do cliente como fluxo principal do produto.
+- RAG sobre SOPs privados.
+- Workflow rico de casos e assistente de campo.
+- Classificacao de causas com dados internos de OMS.
 - GraphQL.
 - WebSocket e Socket.io como contrato oficial.
-- Forecasting.
+- Forecasting pesado.
 - Mobile dedicado.
-- SMS/push.
-- Mapa geográfico.
-- Workflow rico de casos e knowledge base extensa.
 
-## Ordem de precedência documental
+## Ordem de precedencia documental
 
-1. [docs/API_SPEC.md](/C:/Users/tsimoe01/coding/ontogrid/docs/API_SPEC.md)
-2. [docs/DATA_MODEL.md](/C:/Users/tsimoe01/coding/ontogrid/docs/DATA_MODEL.md)
-3. [docs/ARCHITECTURE.md](/C:/Users/tsimoe01/coding/ontogrid/docs/ARCHITECTURE.md)
-4. [docs/MVP_ROADMAP.md](/C:/Users/tsimoe01/coding/ontogrid/docs/MVP_ROADMAP.md)
-5. [docs/USER_STORIES.md](/C:/Users/tsimoe01/coding/ontogrid/docs/USER_STORIES.md)
+1. [docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md](docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md)
+2. [docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md](docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md)
+3. [docs/contracts/API_SPEC.md](docs/contracts/API_SPEC.md)
+4. [docs/platform/DATA_MODEL.md](docs/platform/DATA_MODEL.md)
+5. [docs/platform/ARCHITECTURE.md](docs/platform/ARCHITECTURE.md)
+6. [docs/product/MVP_ROADMAP.md](docs/product/MVP_ROADMAP.md)
+7. [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md)
+8. [docs/platform/DATA_INGESTION.md](docs/platform/DATA_INGESTION.md)
+9. [docs/product/USER_STORIES.md](docs/product/USER_STORIES.md)
+10. [docs/strategy/HISTORICO_E_RECONCILIACAO.md](docs/strategy/HISTORICO_E_RECONCILIACAO.md)
 
-## Convenções de implementação
+## Convencoes de implementacao
 
-- Backend em FastAPI sob [src/backend/app](/C:/Users/tsimoe01/coding/ontogrid/src/backend/app).
-- Frontend em Next.js App Router sob [src/frontend/app](/C:/Users/tsimoe01/coding/ontogrid/src/frontend/app).
-- Sempre refletir contratos de API primeiro em `docs/API_SPEC.md` antes de expandir o código.
-- Novas tabelas operacionais precisam carregar `tenant_id`.
+- Backend em FastAPI sob [src/backend/app](src/backend/app).
+- Frontend em Next.js App Router sob [src/frontend/app](src/frontend/app).
+- Sempre refletir contratos de API primeiro em `docs/contracts/API_SPEC.md` antes de expandir o codigo.
+- Entidades publicas centrais nao carregam `tenant_id` por default; entidades enterprise passam a carregar `tenant_id` na fase seguinte.
 - Timestamp externo sempre normalizado para ISO-8601 com timezone.
-- Preferir documentação curta e executável; evitar blueprints especulativos.
+- Preferir documentacao curta e executavel; evitar blueprints especulativos.
 
-## Domínio
+## Dominio
 
-- Ativos alvo iniciais: transformadores, geradores, disjuntores e reatores.
-- Fontes iniciais de dados: cadastro de ativos, medições históricas/operacionais via upload e lote JSON.
-- Entidades principais do MVP: `tenant`, `user`, `asset`, `measurement_point`, `measurement`, `health_score`, `alert`, `case`, `ingestion_job`.
+- Fontes iniciais do MVP publico: ANEEL, ONS e CCEE.
+- EPE e outras fontes setoriais entram como expansao logo apos o nucleo inicial.
+- Entidades principais do MVP publico: `source`, `dataset`, `dataset_version`, `entity`, `entity_alias`, `relation`, `metric_series`, `observation`, `insight_snapshot`.
+- Entidades centrais da fase enterprise: `tenant`, `user`, `private_connection`, `asset`, `measurement`, `alert`, `case`.
 
 ## Limites do que nao deve ser inferido
 
-- Nao reintroduzir GraphQL, Socket.io ou forecasting sem mudar explicitamente a documentação base.
-- Nao trocar `tenant_id` por `agent_id` em modelos operacionais.
-- Nao assumir integrações ONS, ANEEL, OPC-UA ou notificações multicanal como prontas no v0.1.
-- Nao expandir o MVP com novas features “enterprise” sem atualizar roadmap, stories e API spec em conjunto.
+- Nao reintroduzir `tenant_id` como pivote universal do modelo publico.
+- Nao assumir integracoes SCADA, OMS, ERP ou CMMS como prontas no MVP publico.
+- Nao reintroduzir GraphQL, Socket.io ou forecasting sem mudar explicitamente a documentacao base.
+- Nao promover apps enterprise para o MVP publico sem atualizar visao, roadmap, API spec e data model em conjunto.
+
+## Regras rapidas
+
+- O baseline oficial do produto e o MVP publico v1 do Energy Data Hub.
+- A fonte de verdade dos contratos HTTP e [docs/contracts/API_SPEC.md](docs/contracts/API_SPEC.md).
+- `tenant_id` fica reservado para a futura camada enterprise.
+- O repo e REST-only no primeiro corte.
+- Neo4j no v1 serve ao grafo publico, navegacao e semantica setorial.

@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "OntoGrid",
-  description: "Asset Health MVP v0.1",
+  description: "Energy Data Hub publico para o setor eletrico brasileiro",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

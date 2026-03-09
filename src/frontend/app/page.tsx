@@ -1,44 +1,44 @@
-import { alerts, assetCards, cases } from "../lib/demo-data";
+import { datasetCards, graphEntities, sourceCards } from "../lib/public-demo-data";
 
 export default function HomePage() {
   return (
     <section className="stack">
       <header className="hero">
         <div>
-          <p className="eyebrow">Asset Health</p>
-          <h2>Baseline codável do OntoGrid</h2>
+          <p className="eyebrow">Energy Data Hub</p>
+          <h2>Baseline publico do OntoGrid</h2>
           <p className="muted">
-            O scaffold atual cobre cadastro de ativos, ingestão em lote, health score, alertas,
-            casos simples e Energy Graph básico.
+            O scaffold atual cobre catalogo de fontes, datasets, series publicas e um grafo
+            inicial para ANEEL, ONS e CCEE.
           </p>
         </div>
-        <div className="badge">REST-only v0.1</div>
+        <div className="badge">REST-only public v1</div>
       </header>
 
       <div className="grid three">
         <article className="card">
-          <p className="eyebrow">Assets</p>
-          <strong>{assetCards.length}</strong>
-          <span className="muted">ativos no exemplo local</span>
+          <p className="eyebrow">Sources</p>
+          <strong>{sourceCards.length}</strong>
+          <span className="muted">fontes publicas priorizadas</span>
         </article>
         <article className="card">
-          <p className="eyebrow">Alerts</p>
-          <strong>{alerts.length}</strong>
-          <span className="muted">alertas visíveis por polling</span>
+          <p className="eyebrow">Datasets</p>
+          <strong>{datasetCards.length}</strong>
+          <span className="muted">datasets demonstrativos no catalogo</span>
         </article>
         <article className="card">
-          <p className="eyebrow">Cases</p>
-          <strong>{cases.length}</strong>
-          <span className="muted">casos simples a partir de alertas</span>
+          <p className="eyebrow">Graph</p>
+          <strong>{graphEntities.length}</strong>
+          <span className="muted">entidades publicas visiveis</span>
         </article>
       </div>
 
       <article className="card">
-        <p className="eyebrow">Próximos passos</p>
+        <p className="eyebrow">Proximos passos</p>
         <ul className="list">
-          <li>Trocar o store em memória do backend por PostgreSQL/TimescaleDB.</li>
-          <li>Persistir health score e alertas com regras reais por tipo de ativo.</li>
-          <li>Sincronizar a topologia básica do Energy Graph com Neo4j.</li>
+          <li>Trocar os mocks do catalogo por persistencia em PostgreSQL e TimescaleDB.</li>
+          <li>Materializar entidades, aliases e relacoes publicas em Neo4j.</li>
+          <li>Acoplar o copiloto analitico a datasets, versoes e metadados.</li>
         </ul>
       </article>
     </section>

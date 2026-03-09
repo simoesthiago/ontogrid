@@ -3,9 +3,10 @@ import { ReactNode } from "react";
 
 const navItems = [
   { href: "/", label: "Overview" },
-  { href: "/assets", label: "Assets" },
-  { href: "/alerts", label: "Alerts" },
-  { href: "/cases", label: "Cases" },
+  { href: "/sources", label: "Sources" },
+  { href: "/datasets", label: "Datasets" },
+  { href: "/graph", label: "Graph" },
+  { href: "/insights", label: "Insights" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -14,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div>
           <p className="eyebrow">OntoGrid</p>
-          <h1>MVP v0.1</h1>
+          <h1>Energy Data Hub</h1>
         </div>
         <nav>
           {navItems.map((item) => (

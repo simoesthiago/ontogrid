@@ -1,18 +1,29 @@
 # Data model summary
 
-Core entities:
+Public core entities:
+
+- `source`
+- `dataset`
+- `dataset_version`
+- `refresh_job`
+- `entity`
+- `entity_alias`
+- `relation`
+- `metric_series`
+- `observation`
+- `insight_snapshot`
+
+Enterprise extension later:
 
 - `tenant`
 - `user`
+- `private_connection`
 - `asset`
-- `measurement_point`
 - `measurement`
-- `health_score`
 - `alert`
 - `case`
-- `ingestion_job`
 
 Storage split:
 
-- PostgreSQL/TimescaleDB for operational and time-series data
-- Neo4j for topology and impact
+- PostgreSQL/TimescaleDB for metadata, versions and time-series
+- Neo4j for the public Energy Graph

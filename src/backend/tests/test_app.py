@@ -6,12 +6,6 @@ from app.main import app
 client = TestClient(app)
 
 
-def get_token() -> str:
-    response = client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "secret"})
-    assert response.status_code == 200
-    return response.json()["access_token"]
-
-
 def test_healthz() -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
@@ -19,52 +13,43 @@ def test_healthz() -> None:
 
 
 def test_core_flow() -> None:
-    token = get_token()
-    headers = {"Authorization": f"Bearer {token}"}
+    sources = client.get("/api/v1/sources")
+    assert sources.status_code == 200
+    assert sources.json()["total"] >= 3
 
-    created = client.post(
-        "/api/v1/assets",
-        headers=headers,
-        json={
-            "name": "GB-01",
-            "asset_type": "generator",
-            "substation_name": "SE Norte",
-            "criticality": "high",
-            "status": "active",
-        },
-    )
-    assert created.status_code == 201
-    asset_id = created.json()["id"]
+    datasets = client.get("/api/v1/datasets", params={"source": "ons"})
+    assert datasets.status_code == 200
+    assert datasets.json()["items"][0]["source_code"] == "ons"
+    dataset_id = datasets.json()["items"][0]["id"]
 
-    job = client.post(
-        "/api/v1/ingestion/jobs",
-        headers=headers,
-        json={
-            "source_type": "json_batch",
-            "payload_format": "json",
-            "records": [
-                {
-                    "asset_id": asset_id,
-                    "measurement_type": "temperature",
-                    "value": 96.0,
-                    "timestamp": "2026-03-06T12:00:00Z",
-                    "quality_flag": "good",
-                    "source": "api",
-                }
-            ],
-        },
-    )
-    assert job.status_code == 202
-    assert job.json()["records_accepted"] == 1
+    dataset = client.get(f"/api/v1/datasets/{dataset_id}")
+    assert dataset.status_code == 200
+    assert dataset.json()["id"] == dataset_id
 
-    assets = client.get("/api/v1/assets", headers=headers)
-    assert assets.status_code == 200
-    assert any(item["id"] == asset_id for item in assets.json()["items"])
+    versions = client.get(f"/api/v1/datasets/{dataset_id}/versions")
+    assert versions.status_code == 200
+    version_id = versions.json()["items"][0]["id"]
 
-    health = client.get(f"/api/v1/assets/{asset_id}/health", headers=headers)
-    assert health.status_code == 200
-    assert health.json()["current"]["score"] < 100
+    version = client.get(f"/api/v1/datasets/{dataset_id}/versions/{version_id}")
+    assert version.status_code == 200
+    assert version.json()["dataset_id"] == dataset_id
 
-    alerts = client.get("/api/v1/alerts", headers=headers)
-    assert alerts.status_code == 200
-    assert alerts.json()["total"] >= 1
+    refresh = client.post(f"/api/v1/admin/datasets/{dataset_id}/refresh")
+    assert refresh.status_code == 202
+    assert refresh.json()["dataset_id"] == dataset_id
+
+    series = client.get("/api/v1/series", params={"dataset_id": dataset_id})
+    assert series.status_code == 200
+    series_id = series.json()["items"][0]["id"]
+
+    observations = client.get(f"/api/v1/series/{series_id}/observations")
+    assert observations.status_code == 200
+    assert observations.json()["series_id"] == series_id
+
+    entities = client.get("/api/v1/graph/entities", params={"source": "ons"})
+    assert entities.status_code == 200
+    entity_id = entities.json()["items"][0]["id"]
+
+    neighbors = client.get(f"/api/v1/graph/entities/{entity_id}/neighbors")
+    assert neighbors.status_code == 200
+    assert neighbors.json()["entity_id"] == entity_id

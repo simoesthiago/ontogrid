@@ -1,6 +1,19 @@
 from pydantic import BaseModel
 
 
+class GraphEntityItem(BaseModel):
+    id: str
+    entity_type: str
+    name: str
+    source: str
+    alias_count: int
+
+
+class GraphEntityListResponse(BaseModel):
+    items: list[GraphEntityItem]
+    total: int
+
+
 class GraphNode(BaseModel):
     id: str
     type: str
@@ -13,24 +26,7 @@ class GraphEdge(BaseModel):
     type: str
 
 
-class NeighborsResponse(BaseModel):
-    asset_id: str
+class GraphNeighborsResponse(BaseModel):
+    entity_id: str
     nodes: list[GraphNode]
     edges: list[GraphEdge]
-
-
-class ImpactedAsset(BaseModel):
-    id: str
-    name: str
-    reason: str
-
-
-class ImpactedSubstation(BaseModel):
-    id: str
-    name: str
-
-
-class ImpactResponse(BaseModel):
-    asset_id: str
-    impacted_assets: list[ImpactedAsset]
-    impacted_substations: list[ImpactedSubstation]

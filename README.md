@@ -1,61 +1,83 @@
 # OntoGrid
 
-OntoGrid e uma plataforma de dados e decisao para o setor eletrico brasileiro. O recorte atual do repositório e o **MVP v0.1 de Asset Health**: cadastro de ativos, ingestão de medições, health score determinístico, detecção básica de anomalias, alertas, casos simples e Energy Graph focado em topologia e impacto.
+OntoGrid e uma plataforma vertical de dados, ontologia e IA aplicada para o setor eletrico brasileiro. O recorte atual do repositorio e o **MVP publico v1 do Energy Data Hub**: ingestao e curadoria de dados publicos de ANEEL, ONS e CCEE, versionamento de datasets, Energy Graph publico, APIs e dashboards e um copilot analitico grounded nesses dados.
 
-## Escopo do MVP v0.1
+## Posicionamento do produto
 
-- Cadastro e consulta de ativos críticos por tenant.
-- Ingestão de dados via arquivo CSV/Excel ou lote JSON por API.
-- Armazenamento operacional em PostgreSQL/TimescaleDB.
-- Energy Graph em Neo4j apenas para topologia, vizinhança e impacto.
-- Health score v0 por regras e pesos por tipo de ativo.
-- Anomalia v0 por threshold e rolling z-score.
-- Alertas consumidos por polling HTTP.
-- Casos básicos criados a partir de alertas.
+- Inspirado em benchmarks como Palantir Foundry/AIP, sem buscar paridade literal de produto.
+- Public-first: o MVP nao depende de onboarding de dados privados do cliente.
+- O hub publico e a porta de entrada da ontologia, da visualizacao e da IA.
+- A fase seguinte e o Enterprise Data Plane, que conecta dados sensiveis e habilita apps operacionais.
 
-## Fora do escopo inicial
+## Escopo do MVP publico v1
 
-- GraphQL.
-- WebSocket e Socket.io como requisito do MVP.
-- Prophet, forecasting e ensemble complexo com PyOD.
-- SMS, push notification e mobile dedicado.
-- Mapa geográfico, knowledge base extensa e workflow rico de casos.
+- Catalogo de fontes e datasets publicos.
+- Refresh versionado para ANEEL, ONS e CCEE.
+- Normalizacao temporal e semantica dos dados.
+- Energy Graph publico com entidades e relacoes setoriais.
+- APIs REST para catalogo, series, grafo e insights.
+- Dashboards base para exploracao dos dados.
+- Copilot analitico para perguntas, explicacoes e resumos grounded.
+
+## Fase seguinte
+
+- Enterprise Data Plane tenant-scoped.
+- Federacao com dados privados do cliente.
+- Vigilancia Operacional de Ativos (antigo recorte `Asset Health`).
+- Reliability / Outage Intelligence, Smart Alerting Copilot, Technical Issue Resolution Assistant e Field Ops.
 
 ## Estado atual do repo
 
-O repositório agora contem:
+O repositorio agora contem:
 
-- Documentação consolidada para um baseline único do MVP.
-- Bootstrap mínimo de backend FastAPI em [src/backend](/C:/Users/tsimoe01/coding/ontogrid/src/backend).
-- Bootstrap mínimo de frontend Next.js em [src/frontend](/C:/Users/tsimoe01/coding/ontogrid/src/frontend).
-- Infra local com [docker-compose.yml](/C:/Users/tsimoe01/coding/ontogrid/docker-compose.yml) e [.env.example](/C:/Users/tsimoe01/coding/ontogrid/.env.example).
-- Skill local do projeto em [skills/ontogrid](/C:/Users/tsimoe01/coding/ontogrid/skills/ontogrid).
+- documentacao consolidada para o pivot do MVP publico;
+- bootstrap minimo de backend FastAPI em [src/backend](src/backend);
+- bootstrap minimo de frontend Next.js em [src/frontend](src/frontend);
+- infra local com [docker-compose.yml](docker-compose.yml) e [.env.example](.env.example);
+- skill local do projeto em [skills/ontogrid](skills/ontogrid).
 
 ## Ordem de leitura recomendada
 
-1. [docs/API_SPEC.md](/C:/Users/tsimoe01/coding/ontogrid/docs/API_SPEC.md)
-2. [docs/DATA_MODEL.md](/C:/Users/tsimoe01/coding/ontogrid/docs/DATA_MODEL.md)
-3. [docs/ARCHITECTURE.md](/C:/Users/tsimoe01/coding/ontogrid/docs/ARCHITECTURE.md)
-4. [docs/DATA_INGESTION.md](/C:/Users/tsimoe01/coding/ontogrid/docs/DATA_INGESTION.md)
-5. [docs/USER_STORIES.md](/C:/Users/tsimoe01/coding/ontogrid/docs/USER_STORIES.md)
-6. [docs/MVP_ROADMAP.md](/C:/Users/tsimoe01/coding/ontogrid/docs/MVP_ROADMAP.md)
-7. [docs/TECH_STACK.md](/C:/Users/tsimoe01/coding/ontogrid/docs/TECH_STACK.md)
-8. [docs/INFRA_DEPLOY.md](/C:/Users/tsimoe01/coding/ontogrid/docs/INFRA_DEPLOY.md)
+1. [docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md](docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md)
+2. [docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md](docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md)
+3. [docs/contracts/API_SPEC.md](docs/contracts/API_SPEC.md)
+4. [docs/platform/DATA_MODEL.md](docs/platform/DATA_MODEL.md)
+5. [docs/platform/ARCHITECTURE.md](docs/platform/ARCHITECTURE.md)
+6. [docs/product/MVP_ROADMAP.md](docs/product/MVP_ROADMAP.md)
+7. [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md)
+8. [docs/platform/DATA_INGESTION.md](docs/platform/DATA_INGESTION.md)
+9. [docs/product/USER_STORIES.md](docs/product/USER_STORIES.md)
+10. [docs/strategy/HISTORICO_E_RECONCILIACAO.md](docs/strategy/HISTORICO_E_RECONCILIACAO.md)
+11. [docs/platform/TECH_STACK.md](docs/platform/TECH_STACK.md)
+12. [docs/platform/INFRA_DEPLOY.md](docs/platform/INFRA_DEPLOY.md)
+
+## Contexto estrategico
+
+Os PDFs historicos permanecem versionados em `docs/`:
+
+- [docs/strategy/Plataforma_Ontologica_Produto_Estrategia.pdf](docs/strategy/Plataforma_Ontologica_Produto_Estrategia.pdf)
+- [docs/strategy/Analise_Estrategica_Plataforma_Ontologica_Setor_Eletrico.pdf](docs/strategy/Analise_Estrategica_Plataforma_Ontologica_Setor_Eletrico.pdf)
+
+O raciocinio do documento estrategico de marco de 2025 sobre GenAI foi consolidado em [docs/strategy/HISTORICO_E_RECONCILIACAO.md](docs/strategy/HISTORICO_E_RECONCILIACAO.md) e [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md).
 
 ## Estrutura
 
 ```text
 ontogrid/
-├── docs/                 # Fonte de verdade do produto e arquitetura
-├── infra/                # Notas e convenções de infra local
-├── scripts/              # Scripts utilitários de bootstrap/teste
-├── skills/ontogrid/      # Skill local para agents
-├── src/backend/          # FastAPI scaffold
-├── src/frontend/         # Next.js scaffold
-├── AGENT.md              # Contexto canônico para coding agents
-├── AGENTS.md             # Compatibilidade com ferramentas que buscam AGENTS.md
-├── docker-compose.yml    # Stack local
-└── .env.example          # Variáveis base
+|-- docs/
+|   |-- strategy/         # Visao, portfolio, historico e PDFs estrategicos
+|   |-- product/          # MVP publico, roadmap e user stories
+|   |-- contracts/        # Contratos HTTP
+|   `-- platform/         # Arquitetura, modelo, ingestao, stack e deploy
+|-- infra/                # Notas e convencoes de infra local
+|-- scripts/              # Scripts utilitarios de bootstrap/teste
+|-- skills/ontogrid/      # Skill local para agents
+|-- src/backend/          # FastAPI scaffold
+|-- src/frontend/         # Next.js scaffold
+|-- AGENT.md              # Contexto canonico para coding agents
+|-- AGENTS.md             # Compatibilidade com ferramentas que buscam AGENTS.md
+|-- docker-compose.yml    # Stack local
+`-- .env.example          # Variaveis base
 ```
 
 ## Quick start
@@ -86,10 +108,10 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
-## Próximo passo recomendado
+## Proximo passo recomendado
 
-1. Persistência real do backend em PostgreSQL/TimescaleDB.
-2. Fluxo real de ingestão e criação de `ingestion_job`.
-3. Health score e geração de alertas persistidos.
-4. Integração do frontend com as rotas do backend.
-5. Sincronização do Energy Graph com Neo4j.
+1. Registrar as fontes publicas prioritarias de ANEEL, ONS e CCEE.
+2. Implementar refresh versionado e observabilidade do pipeline publico.
+3. Materializar o Energy Graph publico com entidades e relacoes canonicamente nomeadas.
+4. Expor APIs e dashboards para catalogo, series e insights.
+5. Implementar o copilot analitico grounded em datasets e grafo publico.
