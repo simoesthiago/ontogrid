@@ -1,6 +1,8 @@
-import { datasetCards } from "../../lib/public-demo-data";
+import { getDatasets } from "../../lib/api";
 
-export default function DatasetsPage() {
+export default async function DatasetsPage() {
+  const data = await getDatasets();
+
   return (
     <section className="stack">
       <header>
@@ -9,13 +11,15 @@ export default function DatasetsPage() {
         <p className="muted">Cada dataset combina fonte, dominio, granularidade e versao publicada.</p>
       </header>
       <div className="grid">
-        {datasetCards.map((dataset) => (
+        {data.items.map((dataset) => (
           <article key={dataset.id} className="card">
             <div className="row">
               <strong>{dataset.name}</strong>
-              <span className="pill">{dataset.version}</span>
+              <span className={`pill ${dataset.freshness_status === "fresh" ? "healthy" : "warning"}`}>
+                {dataset.latest_version}
+              </span>
             </div>
-            <p className="muted">{dataset.source}</p>
+            <p className="muted">{dataset.source_code}</p>
             <p>{dataset.domain}</p>
             <p className="muted">Granularidade: {dataset.granularity}</p>
           </article>

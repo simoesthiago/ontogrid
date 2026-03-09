@@ -1,6 +1,8 @@
-import { sourceCards } from "../../lib/public-demo-data";
+import { getSources } from "../../lib/api";
 
-export default function SourcesPage() {
+export default async function SourcesPage() {
+  const data = await getSources();
+
   return (
     <section className="stack">
       <header>
@@ -9,14 +11,16 @@ export default function SourcesPage() {
         <p className="muted">Curadoria inicial do hub publico com ANEEL, ONS e CCEE.</p>
       </header>
       <div className="grid">
-        {sourceCards.map((source) => (
+        {data.items.map((source) => (
           <article key={source.id} className="card">
             <div className="row">
               <strong>{source.name}</strong>
-              <span className="pill healthy">{source.status}</span>
+              <span className={`pill ${source.status === "active" ? "healthy" : ""}`}>
+                {source.status}
+              </span>
             </div>
-            <p className="muted">{source.type}</p>
-            <p>{source.strategy}</p>
+            <p className="muted">{source.authority_type}</p>
+            <p>{source.refresh_strategy}</p>
           </article>
         ))}
       </div>

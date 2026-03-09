@@ -1,6 +1,12 @@
-import { datasetCards, graphEntities, sourceCards } from "../lib/public-demo-data";
+import { getDatasets, getSources } from "../lib/api";
+import { graphEntities } from "../lib/public-demo-data";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [sourcesData, datasetsData] = await Promise.all([
+    getSources(),
+    getDatasets(),
+  ]);
+
   return (
     <section className="stack">
       <header className="hero">
@@ -8,8 +14,8 @@ export default function HomePage() {
           <p className="eyebrow">Energy Data Hub</p>
           <h2>Baseline publico do OntoGrid</h2>
           <p className="muted">
-            O scaffold atual cobre catalogo de fontes, datasets, series publicas e um grafo
-            inicial para ANEEL, ONS e CCEE.
+            Catalogo de fontes, datasets e series publicas para ANEEL, ONS e CCEE.
+            Dados curados, versionados e prontos para consumo via API REST.
           </p>
         </div>
         <div className="badge">REST-only public v1</div>
@@ -18,13 +24,13 @@ export default function HomePage() {
       <div className="grid three">
         <article className="card">
           <p className="eyebrow">Sources</p>
-          <strong>{sourceCards.length}</strong>
-          <span className="muted">fontes publicas priorizadas</span>
+          <strong>{sourcesData.total}</strong>
+          <span className="muted">fontes publicas ativas</span>
         </article>
         <article className="card">
           <p className="eyebrow">Datasets</p>
-          <strong>{datasetCards.length}</strong>
-          <span className="muted">datasets demonstrativos no catalogo</span>
+          <strong>{datasetsData.total}</strong>
+          <span className="muted">datasets no catalogo</span>
         </article>
         <article className="card">
           <p className="eyebrow">Graph</p>
@@ -36,8 +42,8 @@ export default function HomePage() {
       <article className="card">
         <p className="eyebrow">Proximos passos</p>
         <ul className="list">
-          <li>Trocar os mocks do catalogo por persistencia em PostgreSQL e TimescaleDB.</li>
           <li>Materializar entidades, aliases e relacoes publicas em Neo4j.</li>
+          <li>Persistir series temporais em TimescaleDB e expor via API.</li>
           <li>Acoplar o copiloto analitico a datasets, versoes e metadados.</li>
         </ul>
       </article>
