@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.db import get_db, get_session_factory
 from app.schemas.datasets import (
     DatasetDetailResponse,
     DatasetListItem,
@@ -9,13 +11,15 @@ from app.schemas.datasets import (
     DatasetVersionItem,
     DatasetVersionListResponse,
 )
-from app.services.public_data_store import store
+from app.services.catalog_service import catalog_service
+from app.services.refresh_service import RefreshService
 
 router = APIRouter(tags=["datasets"])
 
 
 @router.get("/datasets", response_model=DatasetListResponse)
 def list_datasets(
+    db: Session = Depends(get_db),
     source: str | None = None,
     domain: str | None = None,
     granularity: str | None = None,
@@ -23,52 +27,51 @@ def list_datasets(
     limit: int = 50,
     offset: int = 0,
 ) -> DatasetListResponse:
-    items = store.list_datasets(source=source, domain=domain, granularity=granularity, q=q)
-    window = items[offset : offset + limit]
-    response_items = []
-    for item in window:
-        response_items.append(
-            DatasetListItem(
-                id=item["id"],
-                source_code=item["source_code"],
-                code=item["code"],
-                name=item["name"],
-                domain=item["domain"],
-                granularity=item["granularity"],
-                latest_version=item["latest_version"]["label"],
-                latest_published_at=item["latest_published_at"],
-                freshness_status=item["freshness_status"],
-            )
-        )
-    return DatasetListResponse(items=response_items, total=len(items))
+    items, total = catalog_service.list_datasets(
+        db,
+        source=source,
+        domain=domain,
+        granularity=granularity,
+        q=q,
+        limit=limit,
+        offset=offset,
+    )
+    return DatasetListResponse(items=[DatasetListItem(**item) for item in items], total=total)
 
 
 @router.get("/datasets/{dataset_id}", response_model=DatasetDetailResponse)
-def get_dataset(dataset_id: str) -> DatasetDetailResponse:
-    item = store.get_dataset(dataset_id)
+def get_dataset(dataset_id: str, db: Session = Depends(get_db)) -> DatasetDetailResponse:
+    item = catalog_service.get_dataset(db, dataset_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
     return DatasetDetailResponse(**item)
 
 
 @router.get("/datasets/{dataset_id}/versions", response_model=DatasetVersionListResponse)
-def list_dataset_versions(dataset_id: str) -> DatasetVersionListResponse:
-    if store.get_dataset(dataset_id) is None:
+def list_dataset_versions(dataset_id: str, db: Session = Depends(get_db)) -> DatasetVersionListResponse:
+    if not catalog_service.dataset_exists(db, dataset_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
-    items = store.list_dataset_versions(dataset_id)
+    items = catalog_service.list_dataset_versions(db, dataset_id)
     return DatasetVersionListResponse(dataset_id=dataset_id, items=[DatasetVersionItem(**item) for item in items])
 
 
 @router.get("/datasets/{dataset_id}/versions/{version_id}", response_model=DatasetVersionDetailResponse)
-def get_dataset_version(dataset_id: str, version_id: str) -> DatasetVersionDetailResponse:
-    item = store.get_dataset_version(dataset_id, version_id)
+def get_dataset_version(dataset_id: str, version_id: str, db: Session = Depends(get_db)) -> DatasetVersionDetailResponse:
+    item = catalog_service.get_dataset_version(db, dataset_id, version_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset version not found")
     return DatasetVersionDetailResponse(**item)
 
 
 @router.post("/admin/datasets/{dataset_id}/refresh", response_model=DatasetRefreshResponse, status_code=status.HTTP_202_ACCEPTED)
-def request_dataset_refresh(dataset_id: str) -> DatasetRefreshResponse:
-    if store.get_dataset(dataset_id) is None:
+def request_dataset_refresh(
+    dataset_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> DatasetRefreshResponse:
+    if not catalog_service.dataset_exists(db, dataset_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
-    return DatasetRefreshResponse(**store.create_refresh_job(dataset_id))
+    refresh_service = RefreshService(get_session_factory())
+    job = refresh_service.queue_refresh(dataset_id, trigger_type="manual")
+    background_tasks.add_task(refresh_service.run_refresh, job.id)
+    return DatasetRefreshResponse(**refresh_service.serialize_refresh_job(job))

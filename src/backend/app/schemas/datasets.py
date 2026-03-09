@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -65,7 +67,7 @@ class DatasetVersionDetailResponse(BaseModel):
     row_count: int
     schema_version: str
     checksum: str
-    lineage: dict[str, str]
+    lineage: dict[str, Any]
 
 
 class DatasetRefreshResponse(BaseModel):
