@@ -19,7 +19,7 @@ class SeriesListResponse(BaseModel):
 
 class ObservationItem(BaseModel):
     timestamp: str
-    value: float
+    value: float | str | None
     unit: str
     quality_flag: str
     published_at: str

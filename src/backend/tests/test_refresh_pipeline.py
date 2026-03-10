@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import inspect, select
 
 from app.bootstrap import initialize_application
-from app.db.models import Dataset, DatasetVersion, RefreshJob, Source
+from app.db.models import Dataset, DatasetVersion, Entity, MetricSeries, Observation, RefreshJob, Source
 from app.db.session import get_session_factory
 from app.services.refresh_scheduler import RefreshScheduler
 from app.services.refresh_service import RefreshService
@@ -24,10 +24,25 @@ def test_schema_bootstrap_and_seed(monkeypatch, workspace_tmp_dir: Path) -> None
     try:
         with get_session_factory()() as session:
             inspector = inspect(session.bind)
-            assert {"source", "dataset", "dataset_version", "refresh_job"} <= set(inspector.get_table_names())
+            assert {
+                "source",
+                "dataset",
+                "dataset_version",
+                "refresh_job",
+                "entity",
+                "entity_alias",
+                "relation",
+                "metric_series",
+                "observation",
+                "insight_snapshot",
+                "copilot_trace",
+            } <= set(inspector.get_table_names())
             assert session.query(Source).count() == 3
             assert session.query(Dataset).count() == 3
             assert session.query(DatasetVersion).count() == 3
+            assert session.query(Entity).count() == 3
+            assert session.query(MetricSeries).count() == 3
+            assert session.query(Observation).count() == 8
     finally:
         runtime.shutdown()
     reset_runtime_state()
@@ -114,6 +129,7 @@ def test_scheduler_can_trigger_local_refreshes(monkeypatch, workspace_tmp_dir: P
         with get_session_factory()() as session:
             assert runs == 3
             assert session.query(DatasetVersion).count() == 6
+            assert session.query(Observation).count() == 11
     finally:
         runtime.shutdown()
     reset_runtime_state()

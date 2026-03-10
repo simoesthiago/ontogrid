@@ -6,13 +6,26 @@ from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
-from app.db.models import Dataset, DatasetVersion, RefreshJob
+from app.db.models import (
+    Dataset,
+    DatasetVersion,
+    Entity,
+    EntityAlias,
+    MetricSeries,
+    Observation,
+    RefreshJob,
+    Relation,
+    Source,
+)
 from app.ingestion import get_adapter
+from app.ingestion.base import ParsedDatasetPayload, ParsedEntity, ParsedEntityAlias, ParsedMetricSeries
 from app.services.catalog_service import to_iso8601
+from app.services.graph_service import get_graph_service
+from app.services.insight_service import insight_service
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +85,15 @@ class RefreshService:
                     raw_bytes = adapter.bootstrap_bytes() if bootstrap else adapter.fetch_bytes(settings)
                     checksum = adapter.checksum(raw_bytes)
                     parsed = adapter.parse(raw_bytes, checksum)
-                    artifact_path = self._write_artifact(dataset.code, parsed.label, checksum, raw_bytes, adapter.file_extension, settings)
-                    job.rows_read = parsed.row_count
+                    artifact_path = self._write_artifact(
+                        dataset.code,
+                        parsed.dataset_version.label,
+                        checksum,
+                        raw_bytes,
+                        adapter.file_extension,
+                        settings,
+                    )
+                    job.rows_read = parsed.dataset_version.row_count
 
                     latest_version = session.scalar(
                         select(DatasetVersion)
@@ -88,7 +108,7 @@ class RefreshService:
                         session.commit()
                         logger.info(
                             "refresh-deduplicated source_code=%s dataset_code=%s refresh_job_id=%s version_id=%s",
-                            dataset.source.code,
+                            dataset.source.code if dataset.source else "unknown",
                             dataset.code,
                             job.id,
                             latest_version.id,
@@ -98,17 +118,17 @@ class RefreshService:
                     version = DatasetVersion(
                         id=str(uuid4()),
                         dataset_id=dataset.id,
-                        label=parsed.label,
-                        extracted_at=parsed.extracted_at,
-                        published_at=parsed.published_at,
-                        coverage_start=parsed.coverage_start,
-                        coverage_end=parsed.coverage_end,
-                        row_count=parsed.row_count,
-                        schema_version=parsed.schema_version,
+                        label=parsed.dataset_version.label,
+                        extracted_at=parsed.dataset_version.extracted_at,
+                        published_at=parsed.dataset_version.published_at,
+                        coverage_start=parsed.dataset_version.coverage_start,
+                        coverage_end=parsed.dataset_version.coverage_end,
+                        row_count=parsed.dataset_version.row_count,
+                        schema_version=parsed.dataset_version.schema_version,
                         checksum=checksum,
                         status="published",
                         lineage={
-                            "source_code": dataset.source.code,
+                            "source_code": dataset.source.code if dataset.source else "",
                             "refresh_job_id": job.id,
                             "artifact_checksum": checksum,
                             **adapter.artifact_metadata(artifact_path, raw_bytes),
@@ -117,15 +137,17 @@ class RefreshService:
                     session.add(version)
                     session.flush()
 
+                    self._persist_payload(session, dataset, version, parsed)
+
                     dataset.latest_version_id = version.id
                     job.status = "published"
-                    job.rows_written = parsed.row_count
+                    job.rows_written = parsed.dataset_version.row_count
                     job.finished_at = datetime.now(timezone.utc)
                     job.published_version_id = version.id
                     session.commit()
                     logger.info(
                         "refresh-published source_code=%s dataset_code=%s refresh_job_id=%s version_id=%s",
-                        dataset.source.code,
+                        dataset.source.code if dataset.source else "unknown",
                         dataset.code,
                         job.id,
                         version.id,
@@ -144,8 +166,14 @@ class RefreshService:
                         refresh_job_id,
                         exc,
                     )
+                    return
+
+        self._post_publish(refresh_job_id)
 
     def bootstrap_missing_versions(self) -> None:
+        self.refresh_missing_versions(use_fixtures=True)
+
+    def refresh_missing_versions(self, use_fixtures: bool) -> int:
         with self.session_factory() as session:
             dataset_ids = session.scalars(
                 select(Dataset.id).where(~Dataset.versions.any()).order_by(Dataset.code)
@@ -153,7 +181,8 @@ class RefreshService:
 
         for dataset_id in dataset_ids:
             job = self.queue_refresh(dataset_id, trigger_type="manual")
-            self.run_refresh(job.id, bootstrap=True)
+            self.run_refresh(job.id, bootstrap=use_fixtures)
+        return len(dataset_ids)
 
     def run_due_refreshes(self, force: bool = False) -> int:
         dataset_ids: list[str] = []
@@ -177,6 +206,214 @@ class RefreshService:
             "status": refresh_job.status,
             "requested_at": to_iso8601(refresh_job.created_at) or "",
         }
+
+    def _persist_payload(
+        self,
+        session: Session,
+        dataset: Dataset,
+        version: DatasetVersion,
+        payload: ParsedDatasetPayload,
+    ) -> None:
+        source = session.scalar(select(Source).where(Source.id == dataset.source_id))
+        if source is None:
+            raise ValueError(f"Source {dataset.source_id} not found for dataset {dataset.id}")
+
+        entity_ids_by_key: dict[str, str] = {}
+        for parsed_entity in payload.entities:
+            entity = self._upsert_entity(session, parsed_entity, version.published_at)
+            entity_ids_by_key[parsed_entity.key] = entity.id
+
+        for parsed_alias in payload.aliases:
+            entity_id = entity_ids_by_key.get(parsed_alias.entity_key)
+            if entity_id is None:
+                continue
+            self._upsert_alias(session, source.id, entity_id, parsed_alias)
+
+        series_ids_by_key: dict[str, str] = {}
+        for parsed_series in payload.metric_series:
+            series = self._upsert_series(session, dataset.id, parsed_series)
+            series_ids_by_key[parsed_series.key] = series.id
+
+        for parsed_relation in payload.relations:
+            source_entity_id = entity_ids_by_key.get(parsed_relation.source_entity_key)
+            target_entity_id = entity_ids_by_key.get(parsed_relation.target_entity_key)
+            if source_entity_id is None or target_entity_id is None:
+                continue
+            relation = session.scalar(
+                select(Relation).where(
+                    Relation.dataset_version_id == version.id,
+                    Relation.relation_type == parsed_relation.relation_type,
+                    Relation.source_entity_id == source_entity_id,
+                    Relation.target_entity_id == target_entity_id,
+                )
+            )
+            if relation is None:
+                relation = Relation(
+                    id=str(uuid4()),
+                    dataset_version_id=version.id,
+                    relation_type=parsed_relation.relation_type,
+                    source_entity_id=source_entity_id,
+                    target_entity_id=target_entity_id,
+                )
+                session.add(relation)
+            relation.valid_from = parsed_relation.valid_from
+            relation.valid_to = parsed_relation.valid_to
+            relation.attributes = dict(parsed_relation.attributes)
+
+        for parsed_observation in payload.observations:
+            series_id = series_ids_by_key.get(parsed_observation.series_key)
+            entity_id = entity_ids_by_key.get(parsed_observation.entity_key)
+            if series_id is None or entity_id is None:
+                continue
+            observation = Observation(
+                time=parsed_observation.time,
+                series_id=series_id,
+                entity_id=entity_id,
+                dataset_version_id=version.id,
+                value_numeric=parsed_observation.value_numeric,
+                value_text=parsed_observation.value_text,
+                quality_flag=parsed_observation.quality_flag,
+                dimensions=dict(parsed_observation.dimensions),
+                published_at=parsed_observation.published_at or version.published_at,
+            )
+            session.merge(observation)
+
+        for parsed_series in payload.metric_series:
+            series_id = series_ids_by_key[parsed_series.key]
+            latest_time = session.scalar(
+                select(func.max(Observation.time)).where(
+                    Observation.series_id == series_id,
+                    Observation.dataset_version_id == version.id,
+                )
+            )
+            if latest_time is not None:
+                series = session.get(MetricSeries, series_id)
+                if series is not None:
+                    series.latest_observation_at = latest_time
+
+    def _upsert_entity(self, session: Session, parsed_entity: ParsedEntity, seen_at: datetime) -> Entity:
+        entity = None
+        if parsed_entity.canonical_code:
+            entity = session.scalar(
+                select(Entity).where(
+                    Entity.entity_type == parsed_entity.entity_type,
+                    Entity.canonical_code == parsed_entity.canonical_code,
+                )
+            )
+        if entity is None:
+            entity = session.scalar(
+                select(Entity).where(
+                    Entity.entity_type == parsed_entity.entity_type,
+                    func.lower(Entity.name) == parsed_entity.name.lower(),
+                )
+            )
+        if entity is None:
+            entity = Entity(
+                id=str(uuid4()),
+                entity_type=parsed_entity.entity_type,
+                canonical_code=parsed_entity.canonical_code,
+                name=parsed_entity.name,
+                jurisdiction=parsed_entity.jurisdiction,
+                attributes=dict(parsed_entity.attributes),
+                first_seen_at=seen_at,
+                last_seen_at=seen_at,
+            )
+            session.add(entity)
+            session.flush()
+            return entity
+
+        entity.canonical_code = entity.canonical_code or parsed_entity.canonical_code
+        entity.name = parsed_entity.name
+        entity.jurisdiction = parsed_entity.jurisdiction
+        entity.attributes = {**entity.attributes, **dict(parsed_entity.attributes)}
+        entity.last_seen_at = seen_at
+        return entity
+
+    def _upsert_alias(
+        self,
+        session: Session,
+        source_id: str,
+        entity_id: str,
+        parsed_alias: ParsedEntityAlias,
+    ) -> None:
+        alias = None
+        if parsed_alias.external_code:
+            alias = session.scalar(
+                select(EntityAlias).where(
+                    EntityAlias.source_id == source_id,
+                    EntityAlias.external_code == parsed_alias.external_code,
+                )
+            )
+        if alias is None:
+            alias = session.scalar(
+                select(EntityAlias).where(
+                    EntityAlias.source_id == source_id,
+                    EntityAlias.entity_id == entity_id,
+                    EntityAlias.alias_name == parsed_alias.alias_name,
+                )
+            )
+        if alias is None:
+            alias = EntityAlias(
+                id=str(uuid4()),
+                entity_id=entity_id,
+                source_id=source_id,
+                external_code=parsed_alias.external_code,
+                alias_name=parsed_alias.alias_name,
+                confidence=parsed_alias.confidence,
+            )
+            session.add(alias)
+            return
+
+        alias.entity_id = entity_id
+        alias.alias_name = parsed_alias.alias_name
+        alias.external_code = parsed_alias.external_code
+        alias.confidence = parsed_alias.confidence
+
+    def _upsert_series(self, session: Session, dataset_id: str, parsed_series: ParsedMetricSeries) -> MetricSeries:
+        series = session.scalar(
+            select(MetricSeries).where(
+                MetricSeries.dataset_id == dataset_id,
+                MetricSeries.metric_code == parsed_series.metric_code,
+                MetricSeries.entity_type == parsed_series.entity_type,
+            )
+        )
+        if series is None:
+            series = MetricSeries(
+                id=str(uuid4()),
+                dataset_id=dataset_id,
+                entity_type=parsed_series.entity_type,
+                metric_code=parsed_series.metric_code,
+                metric_name=parsed_series.metric_name,
+                unit=parsed_series.unit,
+                temporal_granularity=parsed_series.temporal_granularity,
+                dimensions=dict(parsed_series.dimensions),
+            )
+            session.add(series)
+            session.flush()
+            return series
+
+        series.metric_name = parsed_series.metric_name
+        series.unit = parsed_series.unit
+        series.temporal_granularity = parsed_series.temporal_granularity
+        series.dimensions = dict(parsed_series.dimensions)
+        return series
+
+    def _post_publish(self, refresh_job_id: str) -> None:
+        with self.session_factory() as session:
+            job = session.get(RefreshJob, refresh_job_id)
+            if job is None or job.published_version_id is None:
+                return
+            try:
+                get_graph_service().project_dataset_version(session, job.dataset_id, job.published_version_id)
+                insight_service.rebuild_overview_snapshot(session)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                logger.warning(
+                    "post-publish-side-effects-failed refresh_job_id=%s error=%s",
+                    refresh_job_id,
+                    exc,
+                )
 
     def _is_due(self, dataset: Dataset, session: Session) -> bool:
         active_job = session.scalar(

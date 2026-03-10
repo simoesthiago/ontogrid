@@ -33,7 +33,7 @@ O repositorio agora contem:
 - documentacao consolidada para o pivot do MVP publico;
 - bootstrap minimo de backend FastAPI em [src/backend](src/backend);
 - bootstrap minimo de frontend Next.js em [src/frontend](src/frontend);
-- infra local com [docker-compose.yml](docker-compose.yml) e [.env.example](.env.example);
+- runtime oficial de desenvolvimento via [docker-compose.yml](docker-compose.yml) e [.env.example](.env.example);
 - skill local do projeto em [skills/ontogrid](skills/ontogrid).
 
 ## Ordem de leitura recomendada
@@ -80,16 +80,40 @@ ontogrid/
 `-- .env.example          # Variaveis base
 ```
 
+## Runtime oficial de desenvolvimento
+
+O baseline de desenvolvimento agora e `docker compose` com:
+
+- FastAPI
+- TimescaleDB/PostgreSQL
+- Neo4j
+- Redis
+- Next.js
+
+SQLite fica reservado para testes locais rapidos e ambientes efemeros.
+No runtime oficial, o container `api` aplica `alembic upgrade head`, seeda o catalogo e busca dados reais ausentes antes de subir o FastAPI.
+
 ## Quick start
 
-### Backend
+### Stack local completa
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+### Backend isolado
+
+Use esse fluxo apenas quando quiser iterar o backend fora do compose. Para o runtime oficial, prefira a stack completa acima.
 
 ```powershell
 cd src/backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .[dev]
-pytest
+alembic upgrade head
+python -m app.cli bootstrap-live-data
+python -m pytest
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -101,17 +125,10 @@ npm install
 npm run dev
 ```
 
-### Stack local completa
-
-```powershell
-Copy-Item .env.example .env
-docker compose up --build
-```
-
 ## Proximo passo recomendado
 
-1. Registrar as fontes publicas prioritarias de ANEEL, ONS e CCEE.
-2. Implementar refresh versionado e observabilidade do pipeline publico.
-3. Materializar o Energy Graph publico com entidades e relacoes canonicamente nomeadas.
-4. Expor APIs e dashboards para catalogo, series e insights.
-5. Implementar o copilot analitico grounded em datasets e grafo publico.
+1. Expandir a cobertura de datasets CKAN com o contrato interno unificado de ingestao.
+2. Reforcar reconciliacao de entidades, aliases e relacoes no grafo publico.
+3. Evoluir dashboards e exploracao de series sobre APIs reais do hub.
+4. Endurecer observabilidade do pipeline e do runtime compose.
+5. Endurecer a operacao do copilot grounded com provider LLM e cache.

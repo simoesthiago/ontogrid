@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.db import get_db
 from app.schemas.series import ObservationListResponse, SeriesListItem, SeriesListResponse
-from app.services.public_data_store import store
+from app.services.series_service import series_service
 
 router = APIRouter(prefix="/series", tags=["series"])
 
@@ -15,11 +17,19 @@ def list_series(
     q: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    db: Session = Depends(get_db),
 ) -> SeriesListResponse:
     del interval
-    items = store.list_series(dataset_id=dataset_id, entity_id=entity_id, metric_code=metric_code, q=q)
-    window = items[offset : offset + limit]
-    return SeriesListResponse(items=[SeriesListItem(**item) for item in window], total=len(items))
+    items, total = series_service.list_series(
+        db,
+        dataset_id=dataset_id,
+        entity_id=entity_id,
+        metric_code=metric_code,
+        q=q,
+        limit=limit,
+        offset=offset,
+    )
+    return SeriesListResponse(items=[SeriesListItem(**item) for item in items], total=total)
 
 
 @router.get("/{series_id}/observations", response_model=ObservationListResponse)
@@ -31,10 +41,18 @@ def get_series_observations(
     entity_id: str | None = None,
     limit: int = 100,
     offset: int = 0,
+    db: Session = Depends(get_db),
 ) -> ObservationListResponse:
-    del start, end, bucket, entity_id
-    result = store.get_observations(series_id)
+    del bucket
+    result = series_service.get_observations(
+        db,
+        series_id=series_id,
+        start=start,
+        end=end,
+        entity_id=entity_id,
+        limit=limit,
+        offset=offset,
+    )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Series not found")
-    items = result["items"][offset : offset + limit]
-    return ObservationListResponse(series_id=series_id, dataset_version_id=result["dataset_version_id"], items=items)
+    return ObservationListResponse(**result)

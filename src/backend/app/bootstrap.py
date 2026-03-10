@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sqlalchemy import text
+
 from app.core.config import get_settings
-from app.db.models import Base
 from app.db.seed import seed_reference_catalog
 from app.db.session import get_engine, get_session_factory
 from app.services.refresh_scheduler import RefreshScheduler
@@ -22,7 +23,8 @@ class AppRuntime:
 def initialize_application() -> AppRuntime:
     settings = get_settings()
     engine = get_engine()
-    Base.metadata.create_all(bind=engine)
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
 
     with get_session_factory()() as session:
         seed_reference_catalog(session)

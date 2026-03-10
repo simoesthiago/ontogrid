@@ -11,13 +11,30 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "sqlite:///./ontogrid.db"
     artifacts_dir: str = "./data/artifacts"
-    seed_demo_catalog: bool = True
+    seed_demo_catalog: bool = False
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: int = 300
     scheduler_force_run_on_startup: bool = False
+    redis_url: str = ""
+    neo4j_uri: str = ""
+    neo4j_username: str = ""
+    neo4j_password: str = ""
+    llm_api_base_url: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
+    copilot_cache_ttl_seconds: int = 3600
     ons_carga_url: str = ""
+    ons_ckan_base_url: str = "https://dados.ons.org.br"
+    ons_carga_package_id: str = "curva-de-carga-horaria"
+    ons_carga_resource_id: str = ""
     aneel_tarifas_url: str = ""
+    aneel_ckan_base_url: str = "https://dadosabertos.aneel.gov.br"
+    aneel_tarifas_package_id: str = "tarifas-distribuidoras-energia-eletrica"
+    aneel_tarifas_resource_id: str = ""
     ccee_pld_url: str = ""
+    ccee_ckan_base_url: str = "https://dadosabertos.ccee.org.br"
+    ccee_pld_package_id: str = "PLD_HORARIO"
+    ccee_pld_resource_id: str = ""
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
     token_expiration_seconds: int = 3600
@@ -36,6 +53,18 @@ class Settings(BaseSettings):
     @property
     def artifacts_path(self) -> Path:
         return Path(self.artifacts_dir).resolve()
+
+    @property
+    def neo4j_enabled(self) -> bool:
+        return bool(self.neo4j_uri and self.neo4j_username and self.neo4j_password)
+
+    @property
+    def redis_enabled(self) -> bool:
+        return bool(self.redis_url)
+
+    @property
+    def llm_enabled(self) -> bool:
+        return bool(self.llm_api_base_url and self.llm_api_key and self.llm_model)
 
 
 @lru_cache

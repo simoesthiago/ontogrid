@@ -7,6 +7,7 @@ const navItems = [
   { href: "/datasets", label: "Datasets" },
   { href: "/graph", label: "Graph" },
   { href: "/insights", label: "Insights" },
+  { href: "/copilot", label: "Copilot" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

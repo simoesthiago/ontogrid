@@ -35,6 +35,10 @@
 - `NEO4J_USERNAME`
 - `NEO4J_PASSWORD`
 - `REDIS_URL`
+- `LLM_API_BASE_URL`
+- `LLM_API_KEY`
+- `LLM_MODEL`
+- `COPILOT_CACHE_TTL_SECONDS`
 - `NEXT_PUBLIC_API_BASE_URL`
 
 `JWT_SECRET` e opcional e so entra quando a camada de conta/autenticacao do produto for ativada.
@@ -46,12 +50,22 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
+No runtime oficial, o servico `api` roda:
+
+1. `alembic upgrade head`
+2. `python -m app.cli bootstrap-live-data`
+3. `uvicorn app.main:app ...`
+
+Isso garante catalogo seedado e datasets faltantes materializados antes da API aceitar trafego.
+
 Backend:
 
 ```powershell
 cd src/backend
 pip install -e .[dev]
-pytest
+alembic upgrade head
+python -m app.cli bootstrap-live-data
+python -m pytest
 ```
 
 Frontend:

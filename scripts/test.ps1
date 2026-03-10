@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 Push-Location "src/backend"
 try {
-    pytest
+    python -m pytest
 }
 finally {
     Pop-Location

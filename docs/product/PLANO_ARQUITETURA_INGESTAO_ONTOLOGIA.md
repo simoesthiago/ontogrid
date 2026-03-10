@@ -132,7 +132,8 @@ O modelo `entity_alias` resolve isso: cada fonte registra seu código/nome como 
 ## D. Decisões de Arquitetura
 
 ### Cloud? **Não para o MVP.**
-- SQLite para dev local, PostgreSQL para staging
+- Runtime oficial de desenvolvimento via `docker compose` com TimescaleDB/PostgreSQL, Neo4j e Redis
+- SQLite fica restrito a testes locais rápidos e ambientes efêmeros
 - Os dados públicos somam poucos GB — cabe em qualquer máquina
 - Cloud entra na fase enterprise com tenant isolation
 
@@ -172,54 +173,64 @@ Cada adapter concreto define:
 
 ### Sprint 2: Dados Reais + Grafo + Séries
 
-**Passo 1 — Infra de ingestão CKAN**
-- Criar `CkanDatasetAdapter` base com `ckanapi`
-- Estender `RefreshService` para persistir entidades + observações (não só versions)
-- Adicionar `ckanapi` ao `pyproject.toml`
+**Passo 1 — Contrato interno da ingestão**
+- Fechar a saída única dos adapters: `dataset_version + entities + aliases + relations + metric_series + observations`
+- Estender `RefreshService` para persistir semântica e séries, não só versions
+- Fazer esse contrato antes de ampliar cobertura de datasets
 
 **Passo 2 — Modelos de dados faltantes**
 - Criar models SQLAlchemy: `Entity`, `EntityAlias`, `Relation`, `MetricSeries`, `Observation`
 - Configurar `observation` como hypertable do TimescaleDB (para prod)
 
-**Passo 3 — 5 adapters ONS prioritários**
+**Passo 3 — Slice vertical persistido dos 3 datasets atuais**
+- Remover a dependência de `public_data_store.py`
+- Servir `series`, `graph` e `insights` a partir do banco
+- Projetar o slice no Neo4j e expor proveniência real
+
+**Passo 4 — Infra de ingestão CKAN**
+- Criar `CkanDatasetAdapter` base usando a API CKAN
+- Migrar primeiro os 3 adapters existentes para CKAN real
+- Só depois ampliar a cobertura para o restante dos datasets prioritários
+
+**Passo 5 — 5 adapters ONS prioritários**
 - `OnsGeracaoUsinaAdapter`: geração horária por usina
 - `OnsCargaSubmercadoAdapter` (já existe, migrar para CKAN real)
 - `OnsEarSubsistemaAdapter`: EAR diária
 - `OnsCapacidadeInstaladaAdapter`: cadastro mestre
 - `OnsReservatoriosAdapter`: cadastro mestre
 
-**Passo 4 — 5 adapters ANEEL prioritários**
+**Passo 6 — 5 adapters ANEEL prioritários**
 - `AneelSigaAdapter`: cadastro do parque gerador
 - `AneelTarifasAdapter` (já existe, migrar para CKAN real)
 - `AneelDecFecAdapter`: indicadores de qualidade
 - `AneelLeiloesAdapter`: resultados de leilões
 - `AneelAgentesGeracaoAdapter`: agentes e usinas
 
-**Passo 5 — 5 adapters CCEE prioritários**
+**Passo 7 — 5 adapters CCEE prioritários**
 - `CceePldAdapter` (já existe, migrar para CKAN real)
 - `CceeAgentesAdapter`: cadastro de agentes
 - `CceeInfomercadoGeracaoAdapter`: geração contabilizada
 - `CceeInfomercadoConsumoAdapter`: consumo por classe
 - `CceeCvuAdapter`: custo variável térmicas
 
-**Passo 6 — Neo4j integration**
+**Passo 8 — Neo4j integration**
 - Service para projetar entidades e relações no grafo
 - Queries de vizinhança para a API `/graph/entities/{id}/neighbors`
 - Substituir `public_data_store.py` por queries reais
 
-**Passo 7 — Frontend com dados reais**
+**Passo 9 — Frontend com dados reais**
 - Dashboards com charts (Recharts ou similar)
 - Página de Graph Explorer com navegação de entidades
 - Séries temporais com gráficos de linha
 
 ### Sprint 3: Copilot + Insights
 
-**Passo 8 — Insights automatizados**
+**Passo 10 — Insights automatizados**
 - `InsightSnapshot` gerado por análise dos dados ingeridos
 - Endpoint `GET /api/v1/insights/overview`
 - Cards: cobertura dos dados, alertas de freshness, destaques
 
-**Passo 9 — Copilot analítico**
+**Passo 11 — Copilot analítico**
 - Endpoint `POST /api/v1/copilot/query`
 - RAG sobre metadados + chunks de datasets + contexto do grafo
 - Citações com rastreabilidade até dataset_version

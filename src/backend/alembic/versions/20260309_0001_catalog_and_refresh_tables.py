@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.engine import Connection
 
 
 revision = "20260309_0001"
@@ -11,6 +12,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
     op.create_table(
         "source",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -69,13 +71,7 @@ def upgrade() -> None:
     op.create_index("ix_dataset_version_dataset_id", "dataset_version", ["dataset_id"], unique=False)
     op.create_index("ix_dataset_version_status", "dataset_version", ["status"], unique=False)
 
-    op.create_foreign_key(
-        "fk_dataset_latest_version",
-        "dataset",
-        "dataset_version",
-        ["latest_version_id"],
-        ["id"],
-    )
+    _create_dataset_latest_version_fk(bind)
 
     op.create_table(
         "refresh_job",
@@ -105,7 +101,7 @@ def downgrade() -> None:
     op.drop_index("ix_refresh_job_dataset_id", table_name="refresh_job")
     op.drop_index("ix_refresh_job_created_at", table_name="refresh_job")
     op.drop_table("refresh_job")
-    op.drop_constraint("fk_dataset_latest_version", "dataset", type_="foreignkey")
+    _drop_dataset_latest_version_fk(op.get_bind())
     op.drop_index("ix_dataset_version_status", table_name="dataset_version")
     op.drop_index("ix_dataset_version_dataset_id", table_name="dataset_version")
     op.drop_table("dataset_version")
@@ -116,3 +112,30 @@ def downgrade() -> None:
     op.drop_index("ix_source_status", table_name="source")
     op.drop_index("ix_source_code", table_name="source")
     op.drop_table("source")
+
+
+def _create_dataset_latest_version_fk(connection: Connection) -> None:
+    if connection.dialect.name == "sqlite":
+        with op.batch_alter_table("dataset") as batch_op:
+            batch_op.create_foreign_key(
+                "fk_dataset_latest_version",
+                "dataset_version",
+                ["latest_version_id"],
+                ["id"],
+            )
+        return
+    op.create_foreign_key(
+        "fk_dataset_latest_version",
+        "dataset",
+        "dataset_version",
+        ["latest_version_id"],
+        ["id"],
+    )
+
+
+def _drop_dataset_latest_version_fk(connection: Connection) -> None:
+    if connection.dialect.name == "sqlite":
+        with op.batch_alter_table("dataset") as batch_op:
+            batch_op.drop_constraint("fk_dataset_latest_version", type_="foreignkey")
+        return
+    op.drop_constraint("fk_dataset_latest_version", "dataset", type_="foreignkey")

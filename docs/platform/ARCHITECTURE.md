@@ -86,7 +86,8 @@ Regras:
 
 ## 6. Modelo de deployment inicial
 
-- desenvolvimento local: `docker compose`;
+- runtime oficial de desenvolvimento: `docker compose` com FastAPI, TimescaleDB/PostgreSQL, Neo4j, Redis e Next.js;
+- SQLite fica restrito a testes locais rapidos e ambientes efemeros;
 - staging inicial: mesma topologia do compose em uma VM unica;
 - producao posterior: fora do escopo desta etapa.
 

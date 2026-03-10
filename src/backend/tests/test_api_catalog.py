@@ -45,15 +45,40 @@ def test_manual_refresh_returns_accepted(client: TestClient) -> None:
     assert response.json()["status"] in {"queued", "published", "failed"}
 
 
-def test_mock_series_and_graph_routes_remain_available(client: TestClient) -> None:
+def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient) -> None:
     series = client.get("/api/v1/series", params={"dataset_id": "ds-ons-carga"})
     assert series.status_code == 200
     assert series.json()["items"][0]["metric_code"] == "load_mw"
+    series_id = series.json()["items"][0]["id"]
+
+    observations = client.get(f"/api/v1/series/{series_id}/observations")
+    assert observations.status_code == 200
+    assert len(observations.json()["items"]) == 3
 
     entities = client.get("/api/v1/graph/entities", params={"source": "ons"})
     assert entities.status_code == 200
     entity_id = entities.json()["items"][0]["id"]
+    assert entities.json()["items"][0]["canonical_code"] == "SE-CO"
+
+    entity = client.get(f"/api/v1/graph/entities/{entity_id}")
+    assert entity.status_code == 200
+    assert entity.json()["entity_type"] == "submarket"
 
     neighbors = client.get(f"/api/v1/graph/entities/{entity_id}/neighbors")
     assert neighbors.status_code == 200
     assert neighbors.json()["entity_id"] == entity_id
+    assert neighbors.json()["provenance"]["dataset_version_ids"]
+
+    overview = client.get("/api/v1/insights/overview")
+    assert overview.status_code == 200
+    assert len(overview.json()["cards"]) >= 2
+
+    entity_insights = client.get(f"/api/v1/insights/entities/{entity_id}")
+    assert entity_insights.status_code == 200
+    assert entity_insights.json()["entity_id"] == entity_id
+
+
+def test_graph_routes_require_backend_when_not_configured(client_without_graph_backend: TestClient) -> None:
+    entities = client_without_graph_backend.get("/api/v1/graph/entities")
+    assert entities.status_code == 503
+    assert "Neo4j" in entities.json()["detail"]

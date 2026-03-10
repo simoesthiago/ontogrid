@@ -9,6 +9,7 @@ Este documento e a fonte de verdade dos contratos HTTP do MVP publico. Se outro 
 - Timezone: respostas em ISO-8601 UTC
 - Leituras publicas nao dependem de `tenant_id`
 - Endpoints em `/api/v1/admin` sao operacionais e exigem credencial de servico ou papel administrativo quando essa camada existir
+- O runtime oficial usa PostgreSQL/Timescale, Neo4j e Redis; SQLite fica restrito a testes e ambientes efemeros
 
 ### Envelope de erro
 
@@ -243,6 +244,10 @@ Response `200`:
 
 ### `GET /api/v1/graph/entities`
 
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+
 Query params:
 
 - `q`
@@ -271,6 +276,10 @@ Response `200`:
 
 ### `GET /api/v1/graph/entities/{entity_id}`
 
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+
 Response `200`:
 
 ```json
@@ -287,6 +296,10 @@ Response `200`:
 ```
 
 ### `GET /api/v1/graph/entities/{entity_id}/neighbors`
+
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
 
 Response `200`:
 
@@ -364,6 +377,12 @@ Response `200`:
 
 ### `POST /api/v1/copilot/query`
 
+Observacoes operacionais:
+
+- o copilot usa cache em Redis para respostas bem-sucedidas;
+- retorna `503` quando o provider LLM nao estiver configurado;
+- quando nao houver grounding suficiente, responde `200` com explicacao explicita e `citations` vazias.
+
 Request:
 
 ```json
@@ -402,7 +421,12 @@ Response `200`:
 
 Usado para health check de servico. Nao faz parte do contrato de produto.
 
-## 9. Fora do contrato do MVP publico
+## 9. Bootstrap oficial
+
+- `docker compose up --build` aplica migrations Alembic e executa o bootstrap live do catalogo antes de subir a API;
+- o startup normal do app nao cria schema via ORM e assume banco migrado.
+
+## 10. Fora do contrato do MVP publico
 
 - tenancy como pivote universal;
 - uploads privados e integracoes de cliente;

@@ -1,10 +1,18 @@
-import { getDatasets, getSources } from "../lib/api";
-import { graphEntities } from "../lib/public-demo-data";
+import {
+  getDatasets,
+  getGraphEntities,
+  getInsightsOverview,
+  getSources,
+} from "../lib/api";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [sourcesData, datasetsData] = await Promise.all([
+  const [sourcesData, datasetsData, entitiesData, insightsData] = await Promise.all([
     getSources(),
     getDatasets(),
+    getGraphEntities({ limit: 12 }),
+    getInsightsOverview(),
   ]);
 
   return (
@@ -12,13 +20,13 @@ export default async function HomePage() {
       <header className="hero">
         <div>
           <p className="eyebrow">Energy Data Hub</p>
-          <h2>Baseline publico do OntoGrid</h2>
+          <h2>Hub publico com catalogo, semantica e series rastreaveis</h2>
           <p className="muted">
-            Catalogo de fontes, datasets e series publicas para ANEEL, ONS e CCEE.
-            Dados curados, versionados e prontos para consumo via API REST.
+            O runtime oficial agora parte de uma stack local com FastAPI, TimescaleDB,
+            Neo4j e Redis. O frontend ja consome catalogo, grafo e insights reais.
           </p>
         </div>
-        <div className="badge">REST-only public v1</div>
+        <div className="badge">Docker compose dev runtime</div>
       </header>
 
       <div className="grid three">
@@ -30,21 +38,40 @@ export default async function HomePage() {
         <article className="card">
           <p className="eyebrow">Datasets</p>
           <strong>{datasetsData.total}</strong>
-          <span className="muted">datasets no catalogo</span>
+          <span className="muted">datasets versionados no catalogo</span>
         </article>
         <article className="card">
-          <p className="eyebrow">Graph</p>
-          <strong>{graphEntities.length}</strong>
-          <span className="muted">entidades publicas visiveis</span>
+          <p className="eyebrow">Entities</p>
+          <strong>{entitiesData.total}</strong>
+          <span className="muted">entidades canonicas materializadas</span>
         </article>
       </div>
 
+      <section className="stack">
+        <header>
+          <p className="eyebrow">Overview</p>
+          <h3>Leituras analiticas das ultimas publicacoes</h3>
+        </header>
+        <div className="grid three">
+          {insightsData.cards.map((card) => (
+            <article key={card.id} className="card">
+              <p className="eyebrow">{card.trend}</p>
+              <strong>{card.title}</strong>
+              <p className="metric">
+                {card.value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+              </p>
+              <p className="muted">{card.unit}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <article className="card">
-        <p className="eyebrow">Proximos passos</p>
+        <p className="eyebrow">Highlights</p>
         <ul className="list">
-          <li>Materializar entidades, aliases e relacoes publicas em Neo4j.</li>
-          <li>Persistir series temporais em TimescaleDB e expor via API.</li>
-          <li>Acoplar o copiloto analitico a datasets, versoes e metadados.</li>
+          {insightsData.highlights.map((highlight) => (
+            <li key={highlight.dataset_version_id}>{highlight.title}</li>
+          ))}
         </ul>
       </article>
     </section>

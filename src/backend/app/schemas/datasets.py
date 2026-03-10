@@ -45,8 +45,8 @@ class DatasetVersionItem(BaseModel):
     label: str
     extracted_at: str
     published_at: str
-    coverage_start: str
-    coverage_end: str
+    coverage_start: str | None
+    coverage_end: str | None
     status: str
     checksum: str
 
@@ -62,8 +62,8 @@ class DatasetVersionDetailResponse(BaseModel):
     label: str
     extracted_at: str
     published_at: str
-    coverage_start: str
-    coverage_end: str
+    coverage_start: str | None
+    coverage_end: str | None
     row_count: int
     schema_version: str
     checksum: str
