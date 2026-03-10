@@ -38,7 +38,7 @@ def test_schema_bootstrap_and_seed(monkeypatch, workspace_tmp_dir: Path) -> None
                 "copilot_trace",
             } <= set(inspector.get_table_names())
             assert session.query(Source).count() == 3
-            assert session.query(Dataset).count() == 3
+            assert session.query(Dataset).count() == 345
             assert session.query(DatasetVersion).count() == 3
             assert session.query(Entity).count() == 3
             assert session.query(MetricSeries).count() == 3

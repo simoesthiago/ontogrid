@@ -10,6 +10,14 @@ _ADAPTERS: dict[str, BaseDatasetAdapter] = {
 }
 
 
+def has_adapter(dataset_code: str) -> bool:
+    return dataset_code in _ADAPTERS
+
+
+def list_adapter_codes() -> set[str]:
+    return set(_ADAPTERS.keys())
+
+
 def get_adapter(dataset_code: str) -> BaseDatasetAdapter:
     try:
         return _ADAPTERS[dataset_code]

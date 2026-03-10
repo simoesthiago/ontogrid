@@ -1,4 +1,5 @@
 import {
+  getCatalogCoverage,
   getDatasets,
   getGraphEntities,
   getInsightsOverview,
@@ -8,9 +9,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [sourcesData, datasetsData, entitiesData, insightsData] = await Promise.all([
+  const [sourcesData, datasetsData, coverageData, entitiesData, insightsData] = await Promise.all([
     getSources(),
     getDatasets(),
+    getCatalogCoverage(),
     getGraphEntities({ limit: 12 }),
     getInsightsOverview(),
   ]);
@@ -38,12 +40,30 @@ export default async function HomePage() {
         <article className="card">
           <p className="eyebrow">Datasets</p>
           <strong>{datasetsData.total}</strong>
-          <span className="muted">datasets versionados no catalogo</span>
+          <span className="muted">datasets inventariados no catalogo</span>
         </article>
         <article className="card">
           <p className="eyebrow">Entities</p>
           <strong>{entitiesData.total}</strong>
           <span className="muted">entidades canonicas materializadas</span>
+        </article>
+      </div>
+
+      <div className="grid three">
+        <article className="card">
+          <p className="eyebrow">Published</p>
+          <strong>{coverageData.published_total}</strong>
+          <span className="muted">datasets com versao publicada</span>
+        </article>
+        <article className="card">
+          <p className="eyebrow">Adapters</p>
+          <strong>{coverageData.adapter_enabled_total + coverageData.published_total}</strong>
+          <span className="muted">datasets com pipeline implementado</span>
+        </article>
+        <article className="card">
+          <p className="eyebrow">Gap</p>
+          <strong>{coverageData.documented_only_total}</strong>
+          <span className="muted">datasets so documentados hoje</span>
         </article>
       </div>
 

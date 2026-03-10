@@ -12,16 +12,35 @@ def test_catalog_endpoints_use_persisted_data(client: TestClient) -> None:
     assert sources.status_code == 200
     assert sources.json()["total"] == 3
 
-    datasets = client.get("/api/v1/datasets", params={"source": "ons"})
+    datasets = client.get("/api/v1/datasets")
+    assert datasets.status_code == 200
+    assert datasets.json()["total"] == 345
+
+    coverage = client.get("/api/v1/catalog/coverage")
+    assert coverage.status_code == 200
+    coverage_payload = coverage.json()
+    assert coverage_payload["inventoried_total"] == 345
+    assert coverage_payload["published_total"] == 3
+    assert coverage_payload["documented_only_total"] == 342
+
+    datasets = client.get("/api/v1/datasets", params={"source": "ons", "q": "carga_horaria_submercado"})
     assert datasets.status_code == 200
     payload = datasets.json()
     assert payload["total"] == 1
     dataset_id = payload["items"][0]["id"]
     assert payload["items"][0]["latest_version"] == "2026-03-09"
+    assert payload["items"][0]["ingestion_status"] == "published"
+    assert payload["items"][0]["adapter_enabled"] is True
 
     dataset = client.get(f"/api/v1/datasets/{dataset_id}")
     assert dataset.status_code == 200
     assert dataset.json()["refresh_frequency"] == "daily"
+    assert dataset.json()["ingestion_status"] == "published"
+
+    documented_only = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_DIARIA"})
+    assert documented_only.status_code == 200
+    assert documented_only.json()["items"][0]["ingestion_status"] == "documented_only"
+    assert documented_only.json()["items"][0]["adapter_enabled"] is False
 
     versions = client.get(f"/api/v1/datasets/{dataset_id}/versions")
     assert versions.status_code == 200
@@ -36,13 +55,22 @@ def test_catalog_endpoints_use_persisted_data(client: TestClient) -> None:
 
 
 def test_manual_refresh_returns_accepted(client: TestClient) -> None:
-    datasets = client.get("/api/v1/datasets", params={"source": "ons"})
+    datasets = client.get("/api/v1/datasets", params={"source": "ons", "q": "carga_horaria_submercado"})
     dataset_id = datasets.json()["items"][0]["id"]
 
     response = client.post(f"/api/v1/admin/datasets/{dataset_id}/refresh")
     assert response.status_code == 202
     assert response.json()["dataset_id"] == dataset_id
     assert response.json()["status"] in {"queued", "published", "failed"}
+
+
+def test_documented_only_dataset_cannot_be_refreshed(client: TestClient) -> None:
+    datasets = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_DIARIA"})
+    dataset_id = datasets.json()["items"][0]["id"]
+
+    response = client.post(f"/api/v1/admin/datasets/{dataset_id}/refresh")
+    assert response.status_code == 409
+    assert "no ingestion adapter" in response.json()["detail"]
 
 
 def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient) -> None:

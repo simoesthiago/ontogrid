@@ -72,6 +72,9 @@ def request_dataset_refresh(
     if not catalog_service.dataset_exists(db, dataset_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
     refresh_service = RefreshService(get_session_factory())
-    job = refresh_service.queue_refresh(dataset_id, trigger_type="manual")
+    try:
+        job = refresh_service.queue_refresh(dataset_id, trigger_type="manual")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     background_tasks.add_task(refresh_service.run_refresh, job.id)
     return DatasetRefreshResponse(**refresh_service.serialize_refresh_job(job))

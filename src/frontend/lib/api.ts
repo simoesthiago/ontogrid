@@ -27,6 +27,8 @@ export interface DatasetListItem {
   latest_version: string;
   latest_published_at: string;
   freshness_status: string;
+  adapter_enabled: boolean;
+  ingestion_status: string;
 }
 
 export interface DatasetListResponse {
@@ -85,6 +87,34 @@ export interface InsightHighlight {
 export interface InsightOverviewResponse {
   cards: InsightCard[];
   highlights: InsightHighlight[];
+}
+
+export interface CatalogCoverageSourceItem {
+  source_code: string;
+  source_name: string;
+  source_document: string;
+  inventoried_total: number;
+  documented_only_total: number;
+  adapter_enabled_total: number;
+  published_total: number;
+}
+
+export interface CatalogCoverageFamilyItem {
+  source_code: string;
+  family: string;
+  inventoried_total: number;
+  documented_only_total: number;
+  adapter_enabled_total: number;
+  published_total: number;
+}
+
+export interface CatalogCoverageResponse {
+  inventoried_total: number;
+  documented_only_total: number;
+  adapter_enabled_total: number;
+  published_total: number;
+  sources: CatalogCoverageSourceItem[];
+  families: CatalogCoverageFamilyItem[];
 }
 
 export interface CopilotCitation {
@@ -184,6 +214,10 @@ export async function getInsightsOverview(params?: {
   if (params?.period) qs.set("period", params.period);
   const query = qs.toString() ? `?${qs}` : "";
   return apiFetch<InsightOverviewResponse>(`/insights/overview${query}`);
+}
+
+export async function getCatalogCoverage(): Promise<CatalogCoverageResponse> {
+  return apiFetch<CatalogCoverageResponse>("/catalog/coverage");
 }
 
 export async function queryCopilot(payload: CopilotQueryRequest): Promise<CopilotQueryResponse> {

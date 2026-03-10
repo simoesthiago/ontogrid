@@ -6,6 +6,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.models import Dataset, DatasetVersion, Source
+from app.ingestion.registry import has_adapter
 
 
 def to_iso8601(value: datetime | None) -> str | None:
@@ -91,6 +92,8 @@ class CatalogService:
                 "label": latest.label if latest else "",
                 "published_at": to_iso8601(latest.published_at) if latest else "",
             },
+            "adapter_enabled": has_adapter(dataset.code),
+            "ingestion_status": self._ingestion_status(dataset),
         }
 
     def list_dataset_versions(self, session: Session, dataset_id: str) -> list[dict]:
@@ -131,6 +134,8 @@ class CatalogService:
             "latest_version": latest_version.label if latest_version else "",
             "latest_published_at": to_iso8601(latest_version.published_at) if latest_version else "",
             "freshness_status": self._freshness_status(dataset, latest_version),
+            "adapter_enabled": has_adapter(dataset.code),
+            "ingestion_status": self._ingestion_status(dataset),
         }
 
     def _serialize_dataset_version_item(self, version: DatasetVersion) -> dict:
@@ -154,6 +159,13 @@ class CatalogService:
         if dataset.refresh_frequency == "monthly" and age.days >= 40:
             return "stale"
         return "fresh"
+
+    def _ingestion_status(self, dataset: Dataset) -> str:
+        if dataset.latest_version is not None:
+            return "published"
+        if has_adapter(dataset.code):
+            return "adapter_enabled"
+        return "documented_only"
 
 
 catalog_service = CatalogService()

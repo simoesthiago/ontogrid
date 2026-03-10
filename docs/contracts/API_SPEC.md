@@ -54,6 +54,11 @@ Response `200`:
 
 ## 3. Datasets
 
+Observacao operacional:
+
+- o catalogo exposto por `/datasets` inclui o universo inventariado em `docs/datasets`, nao apenas os datasets ja ingeridos;
+- `ingestion_status` pode ser `documented_only`, `adapter_enabled` ou `published`.
+
 ### `GET /api/v1/datasets`
 
 Query params:
@@ -79,7 +84,9 @@ Response `200`:
       "granularity": "hour",
       "latest_version": "2026-03-09",
       "latest_published_at": "2026-03-09T12:00:00Z",
-      "freshness_status": "fresh"
+      "freshness_status": "fresh",
+      "adapter_enabled": true,
+      "ingestion_status": "published"
     }
   ],
   "total": 1
@@ -105,6 +112,8 @@ Response `200`:
     "dimensions": ["submarket"],
     "metrics": ["load_mw"]
   },
+  "adapter_enabled": true,
+  "ingestion_status": "published",
   "latest_version": {
     "id": "uuid",
     "label": "2026-03-09",
@@ -164,6 +173,7 @@ Behavior:
 
 - cria um `refresh_job` rastreavel;
 - nao apaga a ultima versao valida quando houver falha;
+- responde `409` quando o dataset esta apenas documentado no catalogo, mas ainda nao possui adapter de ingestao;
 - retorna `202`.
 
 Response `202`:
@@ -177,7 +187,43 @@ Response `202`:
 }
 ```
 
-## 4. Series
+## 4. Coverage
+
+### `GET /api/v1/catalog/coverage`
+
+Response `200`:
+
+```json
+{
+  "inventoried_total": 345,
+  "documented_only_total": 342,
+  "adapter_enabled_total": 0,
+  "published_total": 3,
+  "sources": [
+    {
+      "source_code": "aneel",
+      "source_name": "ANEEL",
+      "source_document": "docs/datasets/datasets_ANEEL.md",
+      "inventoried_total": 69,
+      "documented_only_total": 68,
+      "adapter_enabled_total": 0,
+      "published_total": 1
+    }
+  ],
+  "families": [
+    {
+      "source_code": "ons",
+      "family": "Carga, balanco e programacao",
+      "inventoried_total": 13,
+      "documented_only_total": 12,
+      "adapter_enabled_total": 0,
+      "published_total": 1
+    }
+  ]
+}
+```
+
+## 5. Series
 
 ### `GET /api/v1/series`
 
@@ -240,7 +286,7 @@ Response `200`:
 }
 ```
 
-## 5. Graph
+## 6. Graph
 
 ### `GET /api/v1/graph/entities`
 
@@ -319,7 +365,7 @@ Response `200`:
 }
 ```
 
-## 6. Insights
+## 7. Insights
 
 ### `GET /api/v1/insights/overview`
 
@@ -373,7 +419,7 @@ Response `200`:
 }
 ```
 
-## 7. Copilot
+## 8. Copilot
 
 ### `POST /api/v1/copilot/query`
 
@@ -415,18 +461,18 @@ Response `200`:
 }
 ```
 
-## 8. Endpoint interno
+## 9. Endpoint interno
 
 ### `GET /healthz`
 
 Usado para health check de servico. Nao faz parte do contrato de produto.
 
-## 9. Bootstrap oficial
+## 10. Bootstrap oficial
 
 - `docker compose up --build` aplica migrations Alembic e executa o bootstrap live do catalogo antes de subir a API;
 - o startup normal do app nao cria schema via ORM e assume banco migrado.
 
-## 10. Fora do contrato do MVP publico
+## 11. Fora do contrato do MVP publico
 
 - tenancy como pivote universal;
 - uploads privados e integracoes de cliente;

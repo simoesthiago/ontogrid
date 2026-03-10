@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel
 
 
@@ -13,6 +11,8 @@ class DatasetListItem(BaseModel):
     latest_version: str
     latest_published_at: str
     freshness_status: str
+    adapter_enabled: bool
+    ingestion_status: str
 
 
 class DatasetListResponse(BaseModel):
@@ -36,8 +36,10 @@ class DatasetDetailResponse(BaseModel):
     description: str
     granularity: str
     refresh_frequency: str
-    schema_summary: dict[str, list[str]]
+    schema_summary: dict[str, object]
     latest_version: DatasetVersionSummary
+    adapter_enabled: bool
+    ingestion_status: str
 
 
 class DatasetVersionItem(BaseModel):
@@ -67,7 +69,7 @@ class DatasetVersionDetailResponse(BaseModel):
     row_count: int
     schema_version: str
     checksum: str
-    lineage: dict[str, Any]
+    lineage: dict[str, object]
 
 
 class DatasetRefreshResponse(BaseModel):

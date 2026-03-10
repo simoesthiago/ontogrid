@@ -22,6 +22,7 @@ from app.db.models import (
     Source,
 )
 from app.ingestion import get_adapter
+from app.ingestion.registry import has_adapter
 from app.ingestion.base import ParsedDatasetPayload, ParsedEntity, ParsedEntityAlias, ParsedMetricSeries
 from app.services.catalog_service import to_iso8601
 from app.services.graph_service import get_graph_service
@@ -40,6 +41,8 @@ class RefreshService:
             dataset = session.get(Dataset, dataset_id)
             if dataset is None:
                 raise ValueError(f"Dataset {dataset_id} not found")
+            if not has_adapter(dataset.code):
+                raise ValueError(f"Dataset {dataset.code} is cataloged but has no ingestion adapter")
 
             active_job = session.scalar(
                 select(RefreshJob)
@@ -175,9 +178,8 @@ class RefreshService:
 
     def refresh_missing_versions(self, use_fixtures: bool) -> int:
         with self.session_factory() as session:
-            dataset_ids = session.scalars(
-                select(Dataset.id).where(~Dataset.versions.any()).order_by(Dataset.code)
-            ).all()
+            datasets = session.scalars(select(Dataset).where(~Dataset.versions.any()).order_by(Dataset.code)).all()
+            dataset_ids = [dataset.id for dataset in datasets if has_adapter(dataset.code)]
 
         for dataset_id in dataset_ids:
             job = self.queue_refresh(dataset_id, trigger_type="manual")
@@ -189,6 +191,8 @@ class RefreshService:
         with self.session_factory() as session:
             datasets = session.scalars(select(Dataset).order_by(Dataset.code)).all()
             for dataset in datasets:
+                if not has_adapter(dataset.code):
+                    continue
                 if force or self._is_due(dataset, session):
                     dataset_ids.append(dataset.id)
 
