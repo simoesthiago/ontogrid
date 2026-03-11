@@ -1,0 +1,3 @@
+reference_at,plant_name,ceg,ons_plant_code,agent_name,agent_cnpj,source_type,fuel_type,installed_capacity_mw,municipality,ibge_code,state,submarket,subsystem,status
+2026-03-09T00:00:00Z,UHE Itaipu,CEG-ITAIPU,ONS-001,Itaipu Binacional,00000000000191,hidreletrica,agua,14000.0,Foz do Iguacu,4108304,PR,Sudeste/Centro-Oeste,Sudeste/Centro-Oeste,operating
+2026-03-09T00:00:00Z,UTE Santa Cruz,CEG-SC,ONS-002,Furnas,50230707000186,termica,gas,500.0,Rio de Janeiro,3304557,RJ,Sudeste/Centro-Oeste,Sudeste/Centro-Oeste,operating

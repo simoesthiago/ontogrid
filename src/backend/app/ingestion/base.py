@@ -69,6 +69,8 @@ class ParsedMetricSeries:
     unit: str
     temporal_granularity: str
     entity_type: str
+    semantic_value_type: str = "observed"
+    reference_time_kind: str = "instant"
     dimensions: dict[str, object] = field(default_factory=dict)
 
 

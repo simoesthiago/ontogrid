@@ -10,6 +10,8 @@ class SeriesListItem(BaseModel):
     temporal_granularity: str
     entity_type: str
     latest_observation_at: str
+    semantic_value_type: str
+    reference_time_kind: str
 
 
 class SeriesListResponse(BaseModel):

@@ -80,7 +80,7 @@ Este documento define o modelo canonico do MVP publico. Contratos HTTP pertencem
 | Campo | Tipo | Observacao |
 |---|---|---|
 | id | UUID | PK |
-| entity_type | text | ex. `agent`, `substation`, `line`, `submarket`, `plant` |
+| entity_type | text | vocabulario publico: `agent`, `plant`, `generation_unit`, `distributor`, `municipality`, `subsystem`, `submarket`, `reservoir` |
 | canonical_code | text | unico por tipo quando aplicavel |
 | name | text | obrigatorio |
 | jurisdiction | text | ex. `BR`, `SE`, `SIN` |
@@ -107,7 +107,7 @@ Este documento define o modelo canonico do MVP publico. Contratos HTTP pertencem
 |---|---|---|
 | id | UUID | PK |
 | dataset_version_id | UUID | FK `dataset_version.id` |
-| relation_type | text | ex. `CONNECTS_TO`, `OPERATES`, `BELONGS_TO`, `REGULATES` |
+| relation_type | text | vocabulario minimo: `OPERATED_BY`, `OWNED_BY`, `HAS_UNIT`, `LOCATED_IN`, `BELONGS_TO_SUBSYSTEM`, `MAPPED_TO_SUBMARKET`, `HAS_TARIFF`, `HAS_QUALITY_INDICATOR` |
 | source_entity_id | UUID | FK `entity.id` |
 | target_entity_id | UUID | FK `entity.id` |
 | valid_from | timestamptz | opcional |
@@ -125,6 +125,8 @@ Este documento define o modelo canonico do MVP publico. Contratos HTTP pertencem
 | metric_name | text | obrigatorio |
 | unit | text | obrigatorio |
 | temporal_granularity | text | `hour`, `day`, `month`, `event` |
+| semantic_value_type | text | identidade semantica denormalizada para indexacao: `observed`, `accounted`, `regulatory_effective` |
+| reference_time_kind | text | identidade temporal denormalizada para indexacao: `instant`, `effective_date`, `reference_month` |
 | dimensions | jsonb | eixos complementares |
 | latest_observation_at | timestamptz | opcional |
 
@@ -174,7 +176,128 @@ Chave logica de idempotencia:
 | answer_payload | jsonb | resposta e citacoes |
 | created_at | timestamptz | obrigatorio |
 
-## 3. Energy Graph publico v1
+## 3. Camada semantica seletiva
+
+Regra de modelagem:
+
+- as tabelas abaixo complementam o kernel `entity` / `relation` / `metric_series` / `observation`;
+- nenhuma substitui o kernel relacional;
+- `party_master`, `agent_profile_master`, `asset_master_generation`, `geo_electric_master` e `series_registry` representam o snapshot canonico atual;
+- o historico auditavel continua em `dataset_version`, `relation`, `observation`, `evidence_registry` e `harmonization_event`.
+
+### party_master
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| entity_id | UUID | PK e FK `entity.id` |
+| tax_id | text | CNPJ/CPF normalizado quando houver |
+| legal_name | text | obrigatorio |
+| trade_name | text | opcional |
+| status | text | ex. `active` |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+| lineage | jsonb | proveniencia e faceta de harmonizacao |
+
+### agent_profile_master
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| id | UUID | PK |
+| entity_id | UUID | FK `entity.id` |
+| party_entity_id | UUID | FK `entity.id`, opcional |
+| profile_kind | text | ex. `sector`, `market` |
+| role | text | ex. `generator`, `seller`, `distributor` |
+| source_code | text | `aneel`, `ons`, `ccee` |
+| external_code | text | codigo externo exato da origem quando houver |
+| valid_from | timestamptz | opcional |
+| valid_to | timestamptz | opcional |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+
+### asset_master_generation
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| entity_id | UUID | PK e FK `entity.id` |
+| ceg | text | indexado |
+| ons_plant_code | text | indexado |
+| source_type | text | ex. `hidreletrica`, `termica` |
+| fuel_type | text | opcional |
+| installed_capacity_mw | double precision | opcional |
+| status | text | ex. `operating`, `granted` |
+| municipality_entity_id | UUID | FK `entity.id`, opcional |
+| subsystem_entity_id | UUID | FK `entity.id`, opcional |
+| submarket_entity_id | UUID | FK `entity.id`, opcional |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+
+### asset_bridge_generation
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| id | UUID | PK |
+| asset_entity_id | UUID | FK `entity.id` |
+| bridge_kind | text | ex. `ceg`, `ons_plant_code`, `source_alias` |
+| external_code | text | obrigatorio |
+| source_code | text | `aneel`, `ons`, `ccee` |
+| valid_from | timestamptz | opcional |
+| valid_to | timestamptz | opcional |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+
+### geo_electric_master
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| id | UUID | PK |
+| entity_id | UUID | FK `entity.id` |
+| geo_type | text | `municipality`, `subsystem`, `submarket`, `reservoir` |
+| ibge_code | text | aplicavel a municipio |
+| operator_code | text | codigo eletrico canonico |
+| parent_entity_id | UUID | FK `entity.id`, opcional |
+| mapped_entity_id | UUID | FK `entity.id`, opcional |
+| valid_from | timestamptz | opcional |
+| valid_to | timestamptz | opcional |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+
+### series_registry
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| metric_series_id | UUID | PK e FK `metric_series.id` |
+| semantic_value_type | text | `observed`, `accounted`, `regulatory_effective` |
+| reference_time_kind | text | `instant`, `effective_date`, `reference_month` |
+| target_entity_type | text | alvo semantico da serie |
+| unit | text | unidade canonica |
+| source_dataset_version_id | UUID | FK `dataset_version.id` |
+
+### evidence_registry
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| id | UUID | PK |
+| scope_type | text | ex. `observation`, `relation`, `harmonization` |
+| scope_id | text | seletor estavel do claim |
+| dataset_version_id | UUID | FK `dataset_version.id` |
+| entity_id | UUID | FK `entity.id`, opcional |
+| series_id | UUID | FK `metric_series.id`, opcional |
+| observation_selector | jsonb | detalhes do claim e seletor rastreavel |
+| claim_text | text | frase curta grounded |
+| created_at | timestamptz | obrigatorio |
+
+### harmonization_event
+
+| Campo | Tipo | Observacao |
+|---|---|---|
+| id | UUID | PK |
+| dataset_version_id | UUID | FK `dataset_version.id` |
+| entity_id | UUID | FK `entity.id` |
+| source_code | text | `aneel`, `ons`, `ccee` |
+| entity_type | text | mesmo vocabulario publico de `entity` |
+| source_record_key | text | chave do registro harmonizado na rodada |
+| decision | text | `created_new` ou `matched_existing` |
+| match_rule | text | ex. `exact_tax_id`, `exact_ceg`, `source_external_code` |
+| matched_on | jsonb | valores usados para o match |
+| source_identity | jsonb | espelho minimo do registro de entrada |
+| created_at | timestamptz | obrigatorio |
+
+## 4. Energy Graph publico v1
 
 O Neo4j no MVP publico nao substitui o modelo relacional. Ele projeta entidades e relacoes canonicamente resolvidas para navegacao e contexto.
 
@@ -187,10 +310,11 @@ O Neo4j no MVP publico nao substitui o modelo relacional. Ele projeta entidades 
 ### Relacoes
 
 - `(:Dataset)-[:PUBLISHED_BY]->(:Source)`
-- `(:Entity)-[:BELONGS_TO]->(:Entity)`
-- `(:Entity)-[:CONNECTS_TO]->(:Entity)`
-- `(:Entity)-[:OPERATES]->(:Entity)`
-- `(:Entity)-[:REGULATED_BY]->(:Entity)` quando aplicavel
+- `(:Entity)-[:OPERATED_BY]->(:Entity)`
+- `(:Entity)-[:LOCATED_IN]->(:Entity)`
+- `(:Entity)-[:BELONGS_TO_SUBSYSTEM]->(:Entity)`
+- `(:Entity)-[:MAPPED_TO_SUBMARKET]->(:Entity)`
+- `(:Entity)-[:HAS_QUALITY_INDICATOR]->(:Entity)` quando aplicavel
 - `(:Dataset)-[:REFERENCES]->(:Entity)`
 
 ### Propriedades minimas
@@ -201,7 +325,7 @@ O Neo4j no MVP publico nao substitui o modelo relacional. Ele projeta entidades 
 - `canonical_code`
 - `dataset_version_id` quando a projecao depender de versao especifica
 
-## 4. Extensao enterprise - Fase 2
+## 5. Extensao enterprise - Fase 2
 
 Quando a fase enterprise comecar, entram entidades tenant-scoped como:
 
@@ -217,7 +341,7 @@ Quando a fase enterprise comecar, entram entidades tenant-scoped como:
 
 Regra: `tenant_id` passa a ser obrigatorio apenas dentro dessa camada.
 
-## 5. Indices minimos
+## 6. Indices minimos
 
 - `source(code)`
 - `dataset(source_id, code)`
@@ -226,10 +350,13 @@ Regra: `tenant_id` passa a ser obrigatorio apenas dentro dessa camada.
 - `entity(entity_type, name)`
 - `entity_alias(source_id, external_code)`
 - `relation(source_entity_id, target_entity_id)`
-- `metric_series(dataset_id, metric_code)`
+- `metric_series(dataset_id, metric_code, entity_type, semantic_value_type, reference_time_kind)`
 - `observation(series_id, entity_id, time desc)`
+- `series_registry(semantic_value_type, reference_time_kind)`
+- `evidence_registry(entity_id, created_at desc)`
+- `harmonization_event(dataset_version_id, source_record_key)`
 
-## 6. Itens adiados
+## 7. Itens adiados
 
 - clean room e benchmarking multiempresa;
 - controles enterprise de linha e coluna;

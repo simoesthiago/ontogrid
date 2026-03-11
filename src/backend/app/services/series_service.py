@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Dataset, MetricSeries, Observation
+from app.db.models import Dataset, MetricSeries, Observation, SeriesRegistry
 from app.services.catalog_service import to_iso8601
 
 
@@ -27,7 +27,7 @@ class SeriesService:
         limit: int,
         offset: int,
     ) -> tuple[list[dict[str, object]], int]:
-        query = select(MetricSeries).order_by(MetricSeries.metric_name)
+        query = select(MetricSeries, SeriesRegistry).outerjoin(SeriesRegistry, SeriesRegistry.metric_series_id == MetricSeries.id).order_by(MetricSeries.metric_name)
         if dataset_id:
             query = query.where(MetricSeries.dataset_id == dataset_id)
         if metric_code:
@@ -44,20 +44,22 @@ class SeriesService:
             )
         query = query.distinct()
         total = session.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
-        rows = session.scalars(query.offset(offset).limit(limit)).unique().all()
+        rows = session.execute(query.offset(offset).limit(limit)).all()
         return (
             [
                 {
-                    "id": row.id,
-                    "dataset_id": row.dataset_id,
-                    "metric_code": row.metric_code,
-                    "metric_name": row.metric_name,
-                    "unit": row.unit,
-                    "temporal_granularity": row.temporal_granularity,
-                    "entity_type": row.entity_type,
-                    "latest_observation_at": to_iso8601(row.latest_observation_at) or "",
+                    "id": metric_series.id,
+                    "dataset_id": metric_series.dataset_id,
+                    "metric_code": metric_series.metric_code,
+                    "metric_name": metric_series.metric_name,
+                    "unit": metric_series.unit,
+                    "temporal_granularity": metric_series.temporal_granularity,
+                    "entity_type": metric_series.entity_type,
+                    "latest_observation_at": to_iso8601(metric_series.latest_observation_at) or "",
+                    "semantic_value_type": registry.semantic_value_type if registry else "observed",
+                    "reference_time_kind": registry.reference_time_kind if registry else "instant",
                 }
-                for row in rows
+                for metric_series, registry in rows
             ],
             total,
         )

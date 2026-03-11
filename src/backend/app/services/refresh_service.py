@@ -10,10 +10,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
+from app.domain import (
+    validate_entity_type,
+    validate_reference_time_kind,
+    validate_relation_type,
+    validate_semantic_value_type,
+)
 from app.db.models import (
     Dataset,
     DatasetVersion,
-    Entity,
     EntityAlias,
     MetricSeries,
     Observation,
@@ -23,10 +28,13 @@ from app.db.models import (
 )
 from app.ingestion import get_adapter
 from app.ingestion.registry import has_adapter
-from app.ingestion.base import ParsedDatasetPayload, ParsedEntity, ParsedEntityAlias, ParsedMetricSeries
+from app.ingestion.base import ParsedDatasetPayload, ParsedEntityAlias, ParsedMetricSeries
+from app.services.evidence_service import evidence_service
 from app.services.catalog_service import to_iso8601
 from app.services.graph_service import get_graph_service
+from app.services.harmonization_service import harmonization_service
 from app.services.insight_service import insight_service
+from app.services.semantic_service import semantic_service
 
 logger = logging.getLogger(__name__)
 
@@ -217,15 +225,27 @@ class RefreshService:
         dataset: Dataset,
         version: DatasetVersion,
         payload: ParsedDatasetPayload,
-    ) -> None:
+    ) -> tuple[dict[str, str], dict[str, str]]:
         source = session.scalar(select(Source).where(Source.id == dataset.source_id))
         if source is None:
             raise ValueError(f"Source {dataset.source_id} not found for dataset {dataset.id}")
 
+        aliases_by_entity_key: dict[str, list[ParsedEntityAlias]] = {}
+        for parsed_alias in payload.aliases:
+            aliases_by_entity_key.setdefault(parsed_alias.entity_key, []).append(parsed_alias)
+
         entity_ids_by_key: dict[str, str] = {}
         for parsed_entity in payload.entities:
-            entity = self._upsert_entity(session, parsed_entity, version.published_at)
-            entity_ids_by_key[parsed_entity.key] = entity.id
+            validate_entity_type(parsed_entity.entity_type)
+            result = harmonization_service.upsert_entity(
+                session,
+                source=source,
+                dataset_version_id=version.id,
+                parsed_entity=parsed_entity,
+                aliases=aliases_by_entity_key.get(parsed_entity.key, []),
+                seen_at=version.published_at,
+            )
+            entity_ids_by_key[parsed_entity.key] = result.entity.id
 
         for parsed_alias in payload.aliases:
             entity_id = entity_ids_by_key.get(parsed_alias.entity_key)
@@ -235,10 +255,14 @@ class RefreshService:
 
         series_ids_by_key: dict[str, str] = {}
         for parsed_series in payload.metric_series:
+            validate_entity_type(parsed_series.entity_type)
+            validate_semantic_value_type(parsed_series.semantic_value_type)
+            validate_reference_time_kind(parsed_series.reference_time_kind)
             series = self._upsert_series(session, dataset.id, parsed_series)
             series_ids_by_key[parsed_series.key] = series.id
 
         for parsed_relation in payload.relations:
+            validate_relation_type(parsed_relation.relation_type)
             source_entity_id = entity_ids_by_key.get(parsed_relation.source_entity_key)
             target_entity_id = entity_ids_by_key.get(parsed_relation.target_entity_key)
             if source_entity_id is None or target_entity_id is None:
@@ -294,44 +318,15 @@ class RefreshService:
                 series = session.get(MetricSeries, series_id)
                 if series is not None:
                     series.latest_observation_at = latest_time
-
-    def _upsert_entity(self, session: Session, parsed_entity: ParsedEntity, seen_at: datetime) -> Entity:
-        entity = None
-        if parsed_entity.canonical_code:
-            entity = session.scalar(
-                select(Entity).where(
-                    Entity.entity_type == parsed_entity.entity_type,
-                    Entity.canonical_code == parsed_entity.canonical_code,
-                )
-            )
-        if entity is None:
-            entity = session.scalar(
-                select(Entity).where(
-                    Entity.entity_type == parsed_entity.entity_type,
-                    func.lower(Entity.name) == parsed_entity.name.lower(),
-                )
-            )
-        if entity is None:
-            entity = Entity(
-                id=str(uuid4()),
-                entity_type=parsed_entity.entity_type,
-                canonical_code=parsed_entity.canonical_code,
-                name=parsed_entity.name,
-                jurisdiction=parsed_entity.jurisdiction,
-                attributes=dict(parsed_entity.attributes),
-                first_seen_at=seen_at,
-                last_seen_at=seen_at,
-            )
-            session.add(entity)
-            session.flush()
-            return entity
-
-        entity.canonical_code = entity.canonical_code or parsed_entity.canonical_code
-        entity.name = parsed_entity.name
-        entity.jurisdiction = parsed_entity.jurisdiction
-        entity.attributes = {**entity.attributes, **dict(parsed_entity.attributes)}
-        entity.last_seen_at = seen_at
-        return entity
+        semantic_service.persist_payload_semantics(
+            session,
+            dataset,
+            version,
+            payload,
+            entity_ids_by_key,
+            series_ids_by_key,
+        )
+        return entity_ids_by_key, series_ids_by_key
 
     def _upsert_alias(
         self,
@@ -379,6 +374,8 @@ class RefreshService:
                 MetricSeries.dataset_id == dataset_id,
                 MetricSeries.metric_code == parsed_series.metric_code,
                 MetricSeries.entity_type == parsed_series.entity_type,
+                MetricSeries.semantic_value_type == parsed_series.semantic_value_type,
+                MetricSeries.reference_time_kind == parsed_series.reference_time_kind,
             )
         )
         if series is None:
@@ -390,6 +387,8 @@ class RefreshService:
                 metric_name=parsed_series.metric_name,
                 unit=parsed_series.unit,
                 temporal_granularity=parsed_series.temporal_granularity,
+                semantic_value_type=parsed_series.semantic_value_type,
+                reference_time_kind=parsed_series.reference_time_kind,
                 dimensions=dict(parsed_series.dimensions),
             )
             session.add(series)
@@ -399,6 +398,8 @@ class RefreshService:
         series.metric_name = parsed_series.metric_name
         series.unit = parsed_series.unit
         series.temporal_granularity = parsed_series.temporal_granularity
+        series.semantic_value_type = parsed_series.semantic_value_type
+        series.reference_time_kind = parsed_series.reference_time_kind
         series.dimensions = dict(parsed_series.dimensions)
         return series
 
@@ -408,6 +409,7 @@ class RefreshService:
             if job is None or job.published_version_id is None:
                 return
             try:
+                evidence_service.rebuild_dataset_version_evidence(session, job.published_version_id)
                 get_graph_service().project_dataset_version(session, job.dataset_id, job.published_version_id)
                 insight_service.rebuild_overview_snapshot(session)
                 session.commit()

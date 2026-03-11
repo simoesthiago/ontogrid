@@ -52,6 +52,7 @@ Regras:
 - `api` nao implementa regra de negocio.
 - `schemas` espelham o contrato de API e os payloads internos minimos.
 - `ingestion` concentra extracao, parse, versionamento e lineage.
+- `services` concentra harmonizacao publica, evidencia, projections e agregacao de perfis.
 - `copilot` orquestra contexto e resposta, mas nao vira camada de logica opaca sem citacao.
 
 ## 5. Fluxos principais
@@ -61,9 +62,10 @@ Regras:
 1. Um refresh e disparado por agenda ou via `POST /api/v1/admin/datasets/{dataset_id}/refresh`.
 2. O backend cria `refresh_job`.
 3. O artefato bruto e baixado ou consultado na fonte.
-4. O parser normaliza os dados e gera `dataset_version`.
-5. Series, observacoes e relacoes sao atualizadas.
-6. O Energy Graph e os snapshots de insight sao reprojetados quando necessario.
+4. O parser normaliza os dados em um payload generico do kernel.
+5. O harmonizador publico aplica regras deterministicas de match e persiste a camada semantica seletiva.
+6. Series, observacoes e relacoes sao atualizadas sem substituir o kernel.
+7. Evidencias publicas, projecao Neo4j e snapshots de insight sao rebuildados quando necessario.
 
 ### 5.2 Navegacao do catalogo
 
@@ -81,7 +83,7 @@ Regras:
 
 1. O usuario envia pergunta para `POST /api/v1/copilot/query`.
 2. O backend resolve datasets, versoes, entidades e janelas temporais relevantes.
-3. O copilot monta contexto grounded em dados e metadados.
+3. O copilot monta contexto grounded em observacoes, metadados, evidencia publicada e vizinhanca do grafo.
 4. A resposta retorna com citacoes e perguntas de seguimento.
 
 ## 6. Modelo de deployment inicial

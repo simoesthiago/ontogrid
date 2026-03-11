@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session, joinedload
 from app.copilot.cache import get_copilot_cache
 from app.copilot.client import LlmProviderUnavailable, LlmRequestFailed, get_llm_client
 from app.core.config import get_settings
-from app.db.models import CopilotTrace, Dataset, DatasetVersion, Entity, MetricSeries, Observation, Source
+from app.db.models import CopilotTrace, Dataset, DatasetVersion, Entity, EvidenceRegistry, MetricSeries, Observation, Source
 from app.schemas.copilot import CopilotQueryRequest
 from app.services.catalog_service import to_iso8601
+from app.services.evidence_service import evidence_service
 from app.services.graph_service import GraphBackendUnavailable, get_graph_service
 
 
@@ -52,7 +53,9 @@ class CopilotService:
             response.pop("cached", None)
             return response
 
-        if not grounding["dataset_version_ids"] or not grounding["observations"]:
+        if not grounding["dataset_version_ids"] or (
+            not grounding["observations"] and not grounding["evidence_claims"]
+        ):
             response = {
                 "answer": "Nao encontrei grounding suficiente nas versoes publicadas atuais para responder com seguranca.",
                 "citations": [],
@@ -126,6 +129,7 @@ class CopilotService:
                 "dataset_version_ids": [],
                 "datasets": [],
                 "observations": [],
+                "evidence_claims": [],
                 "graph_context": [],
                 "citations": [],
             }
@@ -138,6 +142,7 @@ class CopilotService:
                 Dataset.name.label("dataset_name"),
                 DatasetVersion.id.label("version_id"),
                 DatasetVersion.label.label("version_label"),
+                MetricSeries.id.label("series_id"),
                 MetricSeries.metric_code.label("metric_code"),
                 MetricSeries.metric_name.label("metric_name"),
                 MetricSeries.unit.label("unit"),
@@ -176,6 +181,7 @@ class CopilotService:
                 "dataset_name": row.dataset_name,
                 "version_id": row.version_id,
                 "version_label": row.version_label,
+                "series_id": row.series_id,
                 "metric_code": row.metric_code,
                 "metric_name": row.metric_name,
                 "unit": row.unit,
@@ -185,6 +191,64 @@ class CopilotService:
                 "value": row.value_numeric if row.value_numeric is not None else row.value_text,
             }
             for row in session.execute(observation_query.limit(100)).all()
+        ]
+
+        evidence_keys = [
+            evidence_service.observation_scope_id(item["series_id"], item["entity_id"], item["timestamp"] or "")
+            for item in observations
+            if item["timestamp"]
+        ]
+        evidence_rows = session.execute(
+            select(EvidenceRegistry.scope_id, EvidenceRegistry.id)
+            .where(
+                EvidenceRegistry.dataset_version_id.in_(version_ids),
+                EvidenceRegistry.scope_id.in_(evidence_keys),
+            )
+        ).all() if evidence_keys else []
+        evidence_by_scope_id = {scope_id: evidence_id for scope_id, evidence_id in evidence_rows}
+
+        for item in observations:
+            timestamp = item["timestamp"] or ""
+            scope_id = evidence_service.observation_scope_id(item["series_id"], item["entity_id"], timestamp)
+            item["evidence_id"] = evidence_by_scope_id.get(scope_id)
+
+        evidence_query = (
+            select(
+                Source.code.label("source_code"),
+                Dataset.id.label("dataset_id"),
+                Dataset.code.label("dataset_code"),
+                DatasetVersion.id.label("version_id"),
+                EvidenceRegistry.id.label("evidence_id"),
+                EvidenceRegistry.entity_id.label("entity_id"),
+                EvidenceRegistry.scope_type.label("scope_type"),
+                EvidenceRegistry.scope_id.label("scope_id"),
+                EvidenceRegistry.claim_text.label("claim_text"),
+            )
+            .join(DatasetVersion, DatasetVersion.id == EvidenceRegistry.dataset_version_id)
+            .join(Dataset, Dataset.id == DatasetVersion.dataset_id)
+            .join(Source, Source.id == Dataset.source_id)
+            .where(EvidenceRegistry.dataset_version_id.in_(version_ids))
+            .order_by(EvidenceRegistry.created_at.desc())
+        )
+        if scope.entity_ids:
+            evidence_query = evidence_query.where(EvidenceRegistry.entity_id.in_(scope.entity_ids))
+        if scope.start is not None:
+            evidence_query = evidence_query.where(DatasetVersion.published_at >= scope.start)
+        if scope.end is not None:
+            evidence_query = evidence_query.where(DatasetVersion.published_at <= scope.end)
+        evidence_claims = [
+            {
+                "source_code": row.source_code,
+                "dataset_id": row.dataset_id,
+                "dataset_code": row.dataset_code,
+                "version_id": row.version_id,
+                "evidence_id": row.evidence_id,
+                "entity_id": row.entity_id,
+                "scope_type": row.scope_type,
+                "scope_id": row.scope_id,
+                "claim_text": row.claim_text,
+            }
+            for row in session.execute(evidence_query.limit(60)).all()
         ]
 
         datasets = [
@@ -218,6 +282,7 @@ class CopilotService:
                 item["dataset_id"],
                 item["version_id"],
                 item["entity_id"],
+                item.get("evidence_id"),
             )
             if key in seen:
                 continue
@@ -228,6 +293,28 @@ class CopilotService:
                     "dataset_id": item["dataset_id"],
                     "version_id": item["version_id"],
                     "entity_id": item["entity_id"],
+                    "evidence_id": item.get("evidence_id"),
+                }
+            )
+
+        for claim in evidence_claims:
+            key = (
+                claim["source_code"],
+                claim["dataset_id"],
+                claim["version_id"],
+                claim["entity_id"],
+                claim["evidence_id"],
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            citations.append(
+                {
+                    "source_code": claim["source_code"],
+                    "dataset_id": claim["dataset_id"],
+                    "version_id": claim["version_id"],
+                    "entity_id": claim["entity_id"],
+                    "evidence_id": claim["evidence_id"],
                 }
             )
 
@@ -235,6 +322,7 @@ class CopilotService:
             "dataset_version_ids": version_ids,
             "datasets": datasets,
             "observations": observations,
+            "evidence_claims": evidence_claims,
             "graph_context": graph_context,
             "citations": citations,
         }
@@ -297,6 +385,7 @@ class CopilotService:
                 },
                 "datasets": grounding["datasets"],
                 "observations": grounding["observations"],
+                "evidence_claims": grounding["evidence_claims"],
                 "graph_context": grounding["graph_context"],
             },
             ensure_ascii=True,

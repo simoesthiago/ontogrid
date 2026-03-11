@@ -196,18 +196,18 @@ Response `200`:
 ```json
 {
   "inventoried_total": 345,
-  "documented_only_total": 342,
+  "documented_only_total": 337,
   "adapter_enabled_total": 0,
-  "published_total": 3,
+  "published_total": 8,
   "sources": [
     {
       "source_code": "aneel",
       "source_name": "ANEEL",
       "source_document": "docs/datasets/datasets_ANEEL.md",
       "inventoried_total": 69,
-      "documented_only_total": 68,
+      "documented_only_total": 66,
       "adapter_enabled_total": 0,
-      "published_total": 1
+      "published_total": 3
     }
   ],
   "families": [
@@ -215,9 +215,9 @@ Response `200`:
       "source_code": "ons",
       "family": "Carga, balanco e programacao",
       "inventoried_total": 13,
-      "documented_only_total": 12,
+      "documented_only_total": 11,
       "adapter_enabled_total": 0,
-      "published_total": 1
+      "published_total": 2
     }
   ]
 }
@@ -250,7 +250,9 @@ Response `200`:
       "unit": "MW",
       "temporal_granularity": "hour",
       "entity_type": "submarket",
-      "latest_observation_at": "2026-03-09T23:00:00Z"
+      "latest_observation_at": "2026-03-09T23:00:00Z",
+      "semantic_value_type": "observed",
+      "reference_time_kind": "instant"
     }
   ],
   "total": 1
@@ -309,11 +311,11 @@ Response `200`:
   "items": [
     {
       "id": "uuid",
-      "entity_type": "substation",
-      "canonical_code": "SE-CENTRO",
-      "name": "SE Centro",
-      "aliases": ["Subestacao Centro"],
-      "jurisdiction": "BR"
+      "entity_type": "submarket",
+      "canonical_code": "SE-CO",
+      "name": "Sudeste/Centro-Oeste",
+      "aliases": ["Sudeste/Centro-Oeste"],
+      "jurisdiction": "SIN"
     }
   ],
   "total": 1
@@ -331,12 +333,12 @@ Response `200`:
 ```json
 {
   "id": "uuid",
-  "entity_type": "substation",
-  "canonical_code": "SE-CENTRO",
-  "name": "SE Centro",
+  "entity_type": "submarket",
+  "canonical_code": "SE-CO",
+  "name": "Sudeste/Centro-Oeste",
   "attributes": {
-    "owner": "ONS",
-    "voltage_kv": 230
+    "source_code": "ons",
+    "operator_code": "SE-CO"
   }
 }
 ```
@@ -353,11 +355,11 @@ Response `200`:
 {
   "entity_id": "uuid",
   "nodes": [
-    { "id": "uuid", "type": "Entity", "name": "SE Centro" },
-    { "id": "uuid", "type": "Entity", "name": "LT-230-01" }
+    { "id": "uuid", "type": "Entity", "name": "Sudeste/Centro-Oeste" },
+    { "id": "uuid", "type": "Dataset", "name": "Carga horaria por submercado" }
   ],
   "edges": [
-    { "source": "uuid", "target": "uuid", "type": "CONNECTS_TO" }
+    { "source": "uuid", "target": "uuid", "type": "REFERENCES" }
   ],
   "provenance": {
     "dataset_version_ids": ["uuid"]
@@ -365,7 +367,115 @@ Response `200`:
 }
 ```
 
-## 7. Insights
+## 7. Entity Profile
+
+### `GET /api/v1/entities/{entity_id}/profile`
+
+Observacoes operacionais:
+
+- agrega identidade, aliases, facetas semanticas, series, vizinhanca e evidencia;
+- funciona mesmo quando Neo4j estiver indisponivel, retornando `graph_status = "unavailable"` e `neighbors = null`.
+
+Response `200`:
+
+```json
+{
+  "identity": {
+    "id": "uuid",
+    "entity_type": "plant",
+    "canonical_code": "PLANT-CEG-ITAIPU",
+    "name": "UHE Itaipu",
+    "jurisdiction": "PR",
+    "attributes": {
+      "source_code": "aneel",
+      "ceg": "CEG-ITAIPU"
+    }
+  },
+  "aliases": [
+    {
+      "source_code": "ons",
+      "alias_name": "UHE Itaipu",
+      "external_code": "ONS-001",
+      "confidence": 1.0
+    }
+  ],
+  "semantic_type": "plant",
+  "facets": {
+    "party": null,
+    "agent_profile": [],
+    "generation_asset": {
+      "ceg": "CEG-ITAIPU",
+      "ons_plant_code": "ONS-001",
+      "source_type": "hidreletrica",
+      "fuel_type": "agua",
+      "installed_capacity_mw": 14000.0,
+      "status": "operating",
+      "municipality_entity_id": "uuid",
+      "subsystem_entity_id": "uuid",
+      "submarket_entity_id": "uuid",
+      "bridge_codes": [
+        {
+          "bridge_kind": "ceg",
+          "external_code": "CEG-ITAIPU",
+          "source_code": "aneel"
+        }
+      ]
+    },
+    "geo": [],
+    "regulatory": null
+  },
+  "series": [
+    {
+      "series_id": "uuid",
+      "dataset_id": "uuid",
+      "dataset_code": "geracao_usina_horaria",
+      "metric_code": "generation_mw",
+      "metric_name": "Geracao verificada",
+      "unit": "MW",
+      "temporal_granularity": "hour",
+      "semantic_value_type": "observed",
+      "reference_time_kind": "instant",
+      "latest_observation_at": "2026-03-09T23:00:00Z",
+      "latest_value": 13200.0
+    }
+  ],
+  "neighbors": {
+    "entity_id": "uuid",
+    "nodes": [],
+    "edges": [],
+    "provenance": {
+      "dataset_version_ids": ["uuid"]
+    }
+  },
+  "recent_versions": [
+    {
+      "dataset_version_id": "uuid",
+      "label": "2026-03-09",
+      "published_at": "2026-03-09T23:00:00Z",
+      "dataset_id": "uuid",
+      "dataset_code": "geracao_usina_horaria"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "uuid",
+      "scope_type": "harmonization",
+      "scope_id": "harmonization:uuid",
+      "dataset_version_id": "uuid",
+      "series_id": null,
+      "selector": {
+        "decision": "matched_existing",
+        "match_rule": "exact_ceg"
+      },
+      "claim_text": "UHE Itaipu foi reconciliada pela regra exact_ceg durante a harmonizacao publica da fonte ons.",
+      "created_at": "2026-03-09T23:00:00Z"
+    }
+  ],
+  "graph_status": "available"
+}
+```
+
+## 8. Insights
 
 ### `GET /api/v1/insights/overview`
 
@@ -419,7 +529,7 @@ Response `200`:
 }
 ```
 
-## 8. Copilot
+## 9. Copilot
 
 ### `POST /api/v1/copilot/query`
 
@@ -427,7 +537,8 @@ Observacoes operacionais:
 
 - o copilot usa cache em Redis para respostas bem-sucedidas;
 - retorna `503` quando o provider LLM nao estiver configurado;
-- quando nao houver grounding suficiente, responde `200` com explicacao explicita e `citations` vazias.
+- quando nao houver grounding suficiente, responde `200` com explicacao explicita e `citations` vazias;
+- o grounding pode vir de observacoes publicadas ou de evidencia publicada de harmonizacao e relacao.
 
 Request:
 
@@ -452,7 +563,8 @@ Response `200`:
       "source_code": "ccee",
       "dataset_id": "uuid",
       "version_id": "uuid",
-      "entity_id": "uuid"
+      "entity_id": "uuid",
+      "evidence_id": "uuid"
     }
   ],
   "follow_up_questions": [
@@ -461,18 +573,18 @@ Response `200`:
 }
 ```
 
-## 9. Endpoint interno
+## 10. Endpoint interno
 
 ### `GET /healthz`
 
 Usado para health check de servico. Nao faz parte do contrato de produto.
 
-## 10. Bootstrap oficial
+## 11. Bootstrap oficial
 
 - `docker compose up --build` aplica migrations Alembic e executa o bootstrap live do catalogo antes de subir a API;
 - o startup normal do app nao cria schema via ORM e assume banco migrado.
 
-## 11. Fora do contrato do MVP publico
+## 12. Fora do contrato do MVP publico
 
 - tenancy como pivote universal;
 - uploads privados e integracoes de cliente;

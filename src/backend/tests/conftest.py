@@ -200,11 +200,23 @@ def configure_test_environment(
 ) -> None:
     db_path = runtime_dir / "ontogrid-test.db"
     artifacts_dir = runtime_dir / "artifacts"
+    default_urls = {
+        "ONS_CARGA_URL": (FIXTURE_DIR / "ons_carga_horaria_submercado.csv").as_uri(),
+        "ONS_GERACAO_USINA_URL": (FIXTURE_DIR / "ons_geracao_usina_horaria.csv").as_uri(),
+        "ANEEL_TARIFAS_URL": (FIXTURE_DIR / "aneel_tarifas_distribuicao.csv").as_uri(),
+        "ANEEL_SIGA_URL": (FIXTURE_DIR / "aneel_siga_geracao.csv").as_uri(),
+        "ANEEL_DEC_FEC_URL": (FIXTURE_DIR / "aneel_dec_fec.csv").as_uri(),
+        "CCEE_PLD_URL": (FIXTURE_DIR / "ccee_pld_horario_submercado.csv").as_uri(),
+        "CCEE_AGENTES_URL": (FIXTURE_DIR / "ccee_agentes_mercado.csv").as_uri(),
+        "CCEE_INFOMERCADO_GERACAO_URL": (FIXTURE_DIR / "ccee_infomercado_geracao_horaria_usina.csv").as_uri(),
+    }
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("ARTIFACTS_DIR", str(artifacts_dir))
     monkeypatch.setenv("SCHEDULER_ENABLED", str(scheduler_enabled).lower())
     monkeypatch.setenv("SCHEDULER_FORCE_RUN_ON_STARTUP", str(scheduler_force_run_on_startup).lower())
     monkeypatch.setenv("SEED_DEMO_CATALOG", str(seed_demo_catalog).lower())
+    for key, value in default_urls.items():
+        monkeypatch.setenv(key, value)
     for key, value in (url_overrides or {}).items():
         monkeypatch.setenv(key, value)
     for key, value in (env_overrides or {}).items():

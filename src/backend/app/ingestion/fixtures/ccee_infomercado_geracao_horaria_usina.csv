@@ -1,0 +1,4 @@
+timestamp,plant_name,ceg,ons_plant_code,agent_name,agent_code,agent_tax_id,state,submarket,generation_mwh
+2026-03-09T21:00:00Z,UHE Itaipu,CEG-ITAIPU,ONS-001,Itaipu Binacional,ITAI,00000000000191,PR,Sudeste/Centro-Oeste,13150.0
+2026-03-09T22:00:00Z,UHE Itaipu,CEG-ITAIPU,ONS-001,Itaipu Binacional,ITAI,00000000000191,PR,Sudeste/Centro-Oeste,12980.0
+2026-03-09T23:00:00Z,UTE Santa Cruz,CEG-SC,ONS-002,Furnas,FURN,50230707000186,RJ,Sudeste/Centro-Oeste,305.0

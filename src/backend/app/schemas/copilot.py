@@ -15,6 +15,7 @@ class CopilotCitation(BaseModel):
     dataset_id: str
     version_id: str
     entity_id: str | None = None
+    evidence_id: str | None = None
 
 
 class CopilotQueryResponse(BaseModel):

@@ -32,3 +32,44 @@ def canonical_submarket(value: str) -> tuple[str, str]:
 
 def distributor_code(name: str) -> str:
     return f"DIST-{normalize_token(name).upper()}"
+
+
+def agent_code(name: str, tax_id: str | None = None) -> str:
+    if tax_id:
+        normalized_tax_id = re.sub(r"[^0-9]", "", tax_id)
+        if normalized_tax_id:
+            return f"AGENT-{normalized_tax_id}"
+    return f"AGENT-{normalize_token(name).upper()}"
+
+
+def plant_code(name: str, *, ceg: str | None = None, ons_plant_code: str | None = None) -> str:
+    if ceg:
+        normalized_ceg = normalize_token(ceg).upper()
+        if normalized_ceg:
+            return f"PLANT-{normalized_ceg}"
+    if ons_plant_code:
+        normalized_ons_code = normalize_token(ons_plant_code).upper()
+        if normalized_ons_code:
+            return f"PLANT-ONS-{normalized_ons_code}"
+    return f"PLANT-{normalize_token(name).upper()}"
+
+
+def municipality_code(name: str, ibge_code: str | None = None) -> str:
+    if ibge_code:
+        normalized_ibge = re.sub(r"[^0-9]", "", ibge_code)
+        if normalized_ibge:
+            return f"MUN-{normalized_ibge}"
+    return f"MUN-{normalize_token(name).upper()}"
+
+
+def subsystem_code(name: str) -> str:
+    normalized = normalize_lookup(name)
+    aliases = {
+        "sudeste centro oeste": "SE-CO",
+        "sudeste centro-oeste": "SE-CO",
+        "sudeste/centro-oeste": "SE-CO",
+        "sul": "S",
+        "nordeste": "NE",
+        "norte": "N",
+    }
+    return aliases.get(normalized, normalize_token(name).upper())

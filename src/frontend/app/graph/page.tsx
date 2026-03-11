@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getEntityNeighbors, getGraphEntities } from "../../lib/api";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,9 @@ export default async function GraphPage() {
         {entities.items.map((entity) => (
           <article key={entity.id} className="card">
             <div className="row">
-              <strong>{entity.name}</strong>
+              <Link href={`/entities/${entity.id}`}>
+                <strong>{entity.name}</strong>
+              </Link>
               <span className="pill">{entity.entity_type}</span>
             </div>
             <p className="muted">{entity.canonical_code || "sem codigo canonico"}</p>

@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from app.copilot.client import get_llm_client
+from app.db.models import Entity
 from app.db.models import CopilotTrace
 from app.db.session import get_session_factory
 
@@ -66,3 +67,35 @@ def test_copilot_reports_insufficient_grounding_without_calling_llm(monkeypatch,
     assert response.json()["citations"] == []
     assert "grounding suficiente" in response.json()["answer"]
     assert calls["count"] == 0
+
+
+def test_copilot_uses_evidence_only_grounding_for_entity_profiles(monkeypatch, client_with_copilot: TestClient) -> None:
+    llm_client = get_llm_client()
+    calls = {"count": 0}
+
+    def fake_complete_json(*, system_prompt: str, user_prompt: str) -> dict[str, object]:
+        del system_prompt, user_prompt
+        calls["count"] += 1
+        return {
+            "answer": "Itaipu Binacional aparece reconciliada entre cadastros publicos.",
+            "follow_up_questions": ["Quero ver as evidencias de reconciliacao."],
+        }
+
+    monkeypatch.setattr(llm_client, "complete_json", fake_complete_json)
+
+    with get_session_factory()() as session:
+        entity_id = session.query(Entity.id).filter(Entity.entity_type == "agent", Entity.name == "Itaipu Binacional").one()[0]
+
+    response = client_with_copilot.post(
+        "/api/v1/copilot/query",
+        json={
+            "question": "Quem e a Itaipu Binacional no hub publico?",
+            "dataset_ids": ["ds-ccee-agentes"],
+            "entity_ids": [entity_id],
+        },
+    )
+
+    assert response.status_code == 200
+    assert calls["count"] == 1
+    assert response.json()["citations"]
+    assert any(citation["evidence_id"] for citation in response.json()["citations"])

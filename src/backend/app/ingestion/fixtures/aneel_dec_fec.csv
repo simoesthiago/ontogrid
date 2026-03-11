@@ -1,0 +1,3 @@
+reference_month,distributor,cnpj,municipality,ibge_code,state,submarket,dec_hours,fec_index
+2026-03-01T00:00:00Z,Enel SP,61695227000193,Sao Paulo,3550308,SP,Sudeste/Centro-Oeste,7.4,4.2
+2026-03-01T00:00:00Z,Neoenergia Brasilia,01000000000100,Brasilia,5300108,DF,Sudeste/Centro-Oeste,5.1,3.4

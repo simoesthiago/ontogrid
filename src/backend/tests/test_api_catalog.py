@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
 
+from app.db.models import Entity
+from app.db.session import get_session_factory
+
 
 def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
@@ -20,8 +23,8 @@ def test_catalog_endpoints_use_persisted_data(client: TestClient) -> None:
     assert coverage.status_code == 200
     coverage_payload = coverage.json()
     assert coverage_payload["inventoried_total"] == 345
-    assert coverage_payload["published_total"] == 3
-    assert coverage_payload["documented_only_total"] == 342
+    assert coverage_payload["published_total"] == 8
+    assert coverage_payload["documented_only_total"] == 337
 
     datasets = client.get("/api/v1/datasets", params={"source": "ons", "q": "carga_horaria_submercado"})
     assert datasets.status_code == 200
@@ -77,13 +80,15 @@ def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient)
     series = client.get("/api/v1/series", params={"dataset_id": "ds-ons-carga"})
     assert series.status_code == 200
     assert series.json()["items"][0]["metric_code"] == "load_mw"
+    assert series.json()["items"][0]["semantic_value_type"] == "observed"
+    assert series.json()["items"][0]["reference_time_kind"] == "instant"
     series_id = series.json()["items"][0]["id"]
 
     observations = client.get(f"/api/v1/series/{series_id}/observations")
     assert observations.status_code == 200
     assert len(observations.json()["items"]) == 3
 
-    entities = client.get("/api/v1/graph/entities", params={"source": "ons"})
+    entities = client.get("/api/v1/graph/entities", params={"source": "ons", "entity_type": "submarket"})
     assert entities.status_code == 200
     entity_id = entities.json()["items"][0]["id"]
     assert entities.json()["items"][0]["canonical_code"] == "SE-CO"
@@ -105,8 +110,23 @@ def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient)
     assert entity_insights.status_code == 200
     assert entity_insights.json()["entity_id"] == entity_id
 
+    profile = client.get(f"/api/v1/entities/{entity_id}/profile")
+    assert profile.status_code == 200
+    assert profile.json()["identity"]["id"] == entity_id
+    assert profile.json()["graph_status"] == "available"
+    assert profile.json()["neighbors"] is not None
+    assert profile.json()["evidence"]
+
 
 def test_graph_routes_require_backend_when_not_configured(client_without_graph_backend: TestClient) -> None:
     entities = client_without_graph_backend.get("/api/v1/graph/entities")
     assert entities.status_code == 503
     assert "Neo4j" in entities.json()["detail"]
+
+    with get_session_factory()() as session:
+        entity_id = session.query(Entity.id).order_by(Entity.name).first()[0]
+
+    profile = client_without_graph_backend.get(f"/api/v1/entities/{entity_id}/profile")
+    assert profile.status_code == 200
+    assert profile.json()["graph_status"] == "unavailable"
+    assert profile.json()["neighbors"] is None

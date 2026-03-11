@@ -122,6 +122,7 @@ export interface CopilotCitation {
   dataset_id: string;
   version_id: string;
   entity_id?: string | null;
+  evidence_id?: string | null;
 }
 
 export interface CopilotQueryRequest {
@@ -137,6 +138,71 @@ export interface CopilotQueryResponse {
   answer: string;
   citations: CopilotCitation[];
   follow_up_questions: string[];
+}
+
+export interface EntityProfileAlias {
+  source_code: string;
+  alias_name: string;
+  external_code?: string | null;
+  confidence?: number | null;
+}
+
+export interface EntityProfileSeriesItem {
+  series_id: string;
+  dataset_id: string;
+  dataset_code: string;
+  metric_code: string;
+  metric_name: string;
+  unit: string;
+  temporal_granularity: string;
+  semantic_value_type: string;
+  reference_time_kind: string;
+  latest_observation_at: string;
+  latest_value: number | string | null;
+}
+
+export interface EntityProfileVersionItem {
+  dataset_version_id: string;
+  label: string;
+  published_at?: string | null;
+  dataset_id: string;
+  dataset_code: string;
+}
+
+export interface EntityProfileEvidenceItem {
+  id: string;
+  scope_type: string;
+  scope_id: string;
+  dataset_version_id: string;
+  series_id?: string | null;
+  selector: Record<string, unknown>;
+  claim_text: string;
+  created_at?: string | null;
+}
+
+export interface EntityProfileResponse {
+  identity: {
+    id: string;
+    entity_type: string;
+    canonical_code: string;
+    name: string;
+    jurisdiction: string;
+    attributes: Record<string, unknown>;
+  };
+  aliases: EntityProfileAlias[];
+  semantic_type: string;
+  facets: {
+    party?: Record<string, unknown> | null;
+    agent_profile: Record<string, unknown>[];
+    generation_asset?: Record<string, unknown> | null;
+    geo: Record<string, unknown>[];
+    regulatory?: Record<string, unknown> | null;
+  };
+  series: EntityProfileSeriesItem[];
+  neighbors: GraphNeighborsResponse | null;
+  recent_versions: EntityProfileVersionItem[];
+  evidence: EntityProfileEvidenceItem[];
+  graph_status: string;
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -203,6 +269,10 @@ export async function getGraphEntities(params?: {
 
 export async function getEntityNeighbors(entityId: string): Promise<GraphNeighborsResponse> {
   return apiFetch<GraphNeighborsResponse>(`/graph/entities/${entityId}/neighbors`);
+}
+
+export async function getEntityProfile(entityId: string): Promise<EntityProfileResponse> {
+  return apiFetch<EntityProfileResponse>(`/entities/${entityId}/profile`);
 }
 
 export async function getInsightsOverview(params?: {

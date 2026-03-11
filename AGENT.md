@@ -31,16 +31,14 @@ Construir o MVP publico v1 do **Energy Data Hub** do OntoGrid para o setor eletr
 
 ## Ordem de precedencia documental
 
-1. [docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md](docs/strategy/VISAO_PLATAFORMA_ESTRATEGIA.md)
-2. [docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md](docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md)
-3. [docs/contracts/API_SPEC.md](docs/contracts/API_SPEC.md)
-4. [docs/platform/DATA_MODEL.md](docs/platform/DATA_MODEL.md)
-5. [docs/platform/ARCHITECTURE.md](docs/platform/ARCHITECTURE.md)
-6. [docs/product/MVP_ROADMAP.md](docs/product/MVP_ROADMAP.md)
-7. [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md)
-8. [docs/platform/DATA_INGESTION.md](docs/platform/DATA_INGESTION.md)
-9. [docs/product/USER_STORIES.md](docs/product/USER_STORIES.md)
-10. [docs/strategy/HISTORICO_E_RECONCILIACAO.md](docs/strategy/HISTORICO_E_RECONCILIACAO.md)
+1. [docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md](docs/product/MVP_PUBLICO_ENERGY_DATA_HUB.md)
+2. [docs/contracts/API_SPEC.md](docs/contracts/API_SPEC.md)
+3. [docs/platform/DATA_MODEL.md](docs/platform/DATA_MODEL.md)
+4. [docs/platform/ARCHITECTURE.md](docs/platform/ARCHITECTURE.md)
+5. [docs/product/MVP_ROADMAP.md](docs/product/MVP_ROADMAP.md)
+6. [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md)
+7. [docs/platform/DATA_INGESTION.md](docs/platform/DATA_INGESTION.md)
+8. [docs/product/USER_STORIES.md](docs/product/USER_STORIES.md)
 
 ## Convencoes de implementacao
 

@@ -19,3 +19,4 @@ coverage/
 src/backend/ontogrid.db
 src/backend/data/artifacts/
 Thumbs.db
+.claude/
