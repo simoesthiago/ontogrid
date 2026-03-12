@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 import { CopilotQueryResponse, queryCopilot } from "../../lib/api";
@@ -77,8 +78,19 @@ export default function CopilotPage() {
             <ul className="list">
               {result.citations.map((citation) => (
                 <li key={`${citation.version_id}-${citation.entity_id ?? "scope"}`}>
-                  {citation.source_code} / {citation.dataset_id} / {citation.version_id}
-                  {citation.entity_id ? ` / ${citation.entity_id}` : ""}
+                  <Link href={`/datasets/${citation.dataset_id}`}>{citation.dataset_name}</Link>
+                  {" / "}
+                  {citation.version_label}
+                  {citation.entity_id ? (
+                    <>
+                      {" / "}
+                      <Link href={`/entities/${citation.entity_id}`}>
+                        {citation.entity_name || citation.entity_id}
+                      </Link>
+                    </>
+                  ) : null}
+                  {" / "}
+                  {citation.source_code}
                 </li>
               ))}
             </ul>

@@ -20,6 +20,8 @@ class SeriesListResponse(BaseModel):
 
 
 class ObservationItem(BaseModel):
+    entity_id: str
+    entity_name: str
     timestamp: str
     value: float | str | None
     unit: str

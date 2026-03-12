@@ -36,6 +36,10 @@ def test_copilot_returns_grounded_response_and_uses_cache(monkeypatch, client_wi
     assert second.status_code == 200
     assert calls["count"] == 1
     assert first.json()["citations"]
+    assert first.json()["citations"][0]["dataset_code"] == "carga_horaria_submercado"
+    assert first.json()["citations"][0]["dataset_name"] == "Carga horaria por submercado"
+    assert first.json()["citations"][0]["version_label"] == "2026-03-09"
+    assert first.json()["citations"][0]["entity_name"] == "Sudeste/Centro-Oeste"
     assert second.json()["follow_up_questions"] == ["Quero comparar com o Sul."]
 
     with get_session_factory()() as session:
@@ -98,4 +102,5 @@ def test_copilot_uses_evidence_only_grounding_for_entity_profiles(monkeypatch, c
     assert response.status_code == 200
     assert calls["count"] == 1
     assert response.json()["citations"]
+    assert response.json()["citations"][0]["dataset_code"] == "agentes_mercado_ccee"
     assert any(citation["evidence_id"] for citation in response.json()["citations"])

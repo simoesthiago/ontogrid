@@ -11,7 +11,9 @@ from app.schemas.datasets import (
     DatasetVersionItem,
     DatasetVersionListResponse,
 )
+from app.schemas.refresh_jobs import RefreshJobItem, RefreshJobListResponse
 from app.services.catalog_service import catalog_service
+from app.services.refresh_job_service import refresh_job_service
 from app.services.refresh_service import RefreshService
 
 router = APIRouter(tags=["datasets"])
@@ -78,3 +80,29 @@ def request_dataset_refresh(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     background_tasks.add_task(refresh_service.run_refresh, job.id)
     return DatasetRefreshResponse(**refresh_service.serialize_refresh_job(job))
+
+
+@router.get("/admin/refresh-jobs", response_model=RefreshJobListResponse)
+def list_refresh_jobs(
+    dataset_id: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+) -> RefreshJobListResponse:
+    items, total = refresh_job_service.list_jobs(
+        db,
+        dataset_id=dataset_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    return RefreshJobListResponse(items=[RefreshJobItem(**item) for item in items], total=total)
+
+
+@router.get("/admin/refresh-jobs/{refresh_job_id}", response_model=RefreshJobItem)
+def get_refresh_job(refresh_job_id: str, db: Session = Depends(get_db)) -> RefreshJobItem:
+    item = refresh_job_service.get_job(db, refresh_job_id)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Refresh job not found")
+    return RefreshJobItem(**item)

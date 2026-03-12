@@ -66,6 +66,19 @@ def test_manual_refresh_returns_accepted(client: TestClient) -> None:
     assert response.json()["dataset_id"] == dataset_id
     assert response.json()["status"] in {"queued", "published", "failed"}
 
+    jobs = client.get("/api/v1/admin/refresh-jobs", params={"dataset_id": dataset_id})
+    assert jobs.status_code == 200
+    jobs_payload = jobs.json()
+    assert jobs_payload["total"] >= 1
+    first_job = jobs_payload["items"][0]
+    assert first_job["dataset_id"] == dataset_id
+    assert first_job["dataset_code"] == "carga_horaria_submercado"
+    assert first_job["source_code"] == "ons"
+
+    job_detail = client.get(f"/api/v1/admin/refresh-jobs/{first_job['id']}")
+    assert job_detail.status_code == 200
+    assert job_detail.json()["id"] == first_job["id"]
+
 
 def test_documented_only_dataset_cannot_be_refreshed(client: TestClient) -> None:
     datasets = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_DIARIA"})
@@ -87,6 +100,16 @@ def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient)
     observations = client.get(f"/api/v1/series/{series_id}/observations")
     assert observations.status_code == 200
     assert len(observations.json()["items"]) == 3
+    assert observations.json()["items"][0]["entity_id"]
+    assert observations.json()["items"][0]["entity_name"] == "Sudeste/Centro-Oeste"
+
+    versioned_observations = client.get(
+        f"/api/v1/series/{series_id}/observations",
+        params={"dataset_version_id": observations.json()["dataset_version_id"]},
+    )
+    assert versioned_observations.status_code == 200
+    assert versioned_observations.json()["dataset_version_id"] == observations.json()["dataset_version_id"]
+    assert versioned_observations.json()["items"][0]["entity_id"] == observations.json()["items"][0]["entity_id"]
 
     entities = client.get("/api/v1/graph/entities", params={"source": "ons", "entity_type": "submarket"})
     assert entities.status_code == 200

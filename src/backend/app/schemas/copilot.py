@@ -13,8 +13,12 @@ class CopilotQueryRequest(BaseModel):
 class CopilotCitation(BaseModel):
     source_code: str
     dataset_id: str
+    dataset_code: str
+    dataset_name: str
     version_id: str
+    version_label: str
     entity_id: str | None = None
+    entity_name: str | None = None
     evidence_id: str | None = None
 
 

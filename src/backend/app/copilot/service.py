@@ -217,9 +217,12 @@ class CopilotService:
                 Source.code.label("source_code"),
                 Dataset.id.label("dataset_id"),
                 Dataset.code.label("dataset_code"),
+                Dataset.name.label("dataset_name"),
                 DatasetVersion.id.label("version_id"),
+                DatasetVersion.label.label("version_label"),
                 EvidenceRegistry.id.label("evidence_id"),
                 EvidenceRegistry.entity_id.label("entity_id"),
+                Entity.name.label("entity_name"),
                 EvidenceRegistry.scope_type.label("scope_type"),
                 EvidenceRegistry.scope_id.label("scope_id"),
                 EvidenceRegistry.claim_text.label("claim_text"),
@@ -227,6 +230,7 @@ class CopilotService:
             .join(DatasetVersion, DatasetVersion.id == EvidenceRegistry.dataset_version_id)
             .join(Dataset, Dataset.id == DatasetVersion.dataset_id)
             .join(Source, Source.id == Dataset.source_id)
+            .outerjoin(Entity, Entity.id == EvidenceRegistry.entity_id)
             .where(EvidenceRegistry.dataset_version_id.in_(version_ids))
             .order_by(EvidenceRegistry.created_at.desc())
         )
@@ -241,9 +245,12 @@ class CopilotService:
                 "source_code": row.source_code,
                 "dataset_id": row.dataset_id,
                 "dataset_code": row.dataset_code,
+                "dataset_name": row.dataset_name,
                 "version_id": row.version_id,
+                "version_label": row.version_label,
                 "evidence_id": row.evidence_id,
                 "entity_id": row.entity_id,
+                "entity_name": row.entity_name,
                 "scope_type": row.scope_type,
                 "scope_id": row.scope_id,
                 "claim_text": row.claim_text,
@@ -275,7 +282,7 @@ class CopilotService:
                 graph_context.append(neighbors)
 
         citations: list[dict[str, object]] = []
-        seen: set[tuple[str, str, str, str | None]] = set()
+        seen: set[tuple[str, str, str, str | None, str | None]] = set()
         for item in observations:
             key = (
                 item["source_code"],
@@ -291,8 +298,12 @@ class CopilotService:
                 {
                     "source_code": item["source_code"],
                     "dataset_id": item["dataset_id"],
+                    "dataset_code": item["dataset_code"],
+                    "dataset_name": item["dataset_name"],
                     "version_id": item["version_id"],
+                    "version_label": item["version_label"],
                     "entity_id": item["entity_id"],
+                    "entity_name": item["entity_name"],
                     "evidence_id": item.get("evidence_id"),
                 }
             )
@@ -312,8 +323,12 @@ class CopilotService:
                 {
                     "source_code": claim["source_code"],
                     "dataset_id": claim["dataset_id"],
+                    "dataset_code": claim["dataset_code"],
+                    "dataset_name": claim["dataset_name"],
                     "version_id": claim["version_id"],
+                    "version_label": claim["version_label"],
                     "entity_id": claim["entity_id"],
+                    "entity_name": claim["entity_name"],
                     "evidence_id": claim["evidence_id"],
                 }
             )

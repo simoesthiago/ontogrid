@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCatalogCoverage, getDatasets } from "../../lib/api";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +87,9 @@ export default async function DatasetsPage() {
                 return (
                   <article key={dataset.id} className="card">
                     <div className="row">
-                      <strong>{dataset.name}</strong>
+                      <Link href={`/datasets/${dataset.id}`}>
+                        <strong>{dataset.name}</strong>
+                      </Link>
                       <span className={`pill ${status.className}`}>{status.label}</span>
                     </div>
                     <p className="muted">{dataset.code}</p>

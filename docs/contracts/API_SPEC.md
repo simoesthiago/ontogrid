@@ -187,6 +187,66 @@ Response `202`:
 }
 ```
 
+### `GET /api/v1/admin/refresh-jobs`
+
+Query params:
+
+- `dataset_id`
+- `status`
+- `limit`
+- `offset`
+
+Response `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "dataset_id": "uuid",
+      "dataset_code": "carga_horaria_submercado",
+      "dataset_name": "Carga horaria por submercado",
+      "source_code": "ons",
+      "trigger_type": "manual",
+      "status": "published",
+      "rows_read": 744,
+      "rows_written": 744,
+      "error_summary": null,
+      "created_at": "2026-03-09T12:05:00Z",
+      "started_at": "2026-03-09T12:05:02Z",
+      "finished_at": "2026-03-09T12:05:10Z",
+      "published_version_id": "uuid",
+      "published_version_label": "2026-03-09"
+    }
+  ],
+  "total": 1
+}
+```
+
+### `GET /api/v1/admin/refresh-jobs/{refresh_job_id}`
+
+Response `200`:
+
+```json
+{
+  "id": "uuid",
+  "dataset_id": "uuid",
+  "dataset_code": "carga_horaria_submercado",
+  "dataset_name": "Carga horaria por submercado",
+  "source_code": "ons",
+  "trigger_type": "manual",
+  "status": "published",
+  "rows_read": 744,
+  "rows_written": 744,
+  "error_summary": null,
+  "created_at": "2026-03-09T12:05:00Z",
+  "started_at": "2026-03-09T12:05:02Z",
+  "finished_at": "2026-03-09T12:05:10Z",
+  "published_version_id": "uuid",
+  "published_version_label": "2026-03-09"
+}
+```
+
 ## 4. Coverage
 
 ### `GET /api/v1/catalog/coverage`
@@ -266,6 +326,7 @@ Query params:
 - `start`
 - `end`
 - `bucket`
+- `dataset_version_id`
 - `entity_id`
 - `limit`
 - `offset`
@@ -278,6 +339,8 @@ Response `200`:
   "dataset_version_id": "uuid",
   "items": [
     {
+      "entity_id": "uuid",
+      "entity_name": "Sudeste/Centro-Oeste",
       "timestamp": "2026-03-09T12:00:00Z",
       "value": 81234.5,
       "unit": "MW",
@@ -562,8 +625,12 @@ Response `200`:
     {
       "source_code": "ccee",
       "dataset_id": "uuid",
+      "dataset_code": "pld_horario_submercado",
+      "dataset_name": "PLD horario por submercado",
       "version_id": "uuid",
+      "version_label": "2026-03-09",
       "entity_id": "uuid",
+      "entity_name": "Sudeste/Centro-Oeste",
       "evidence_id": "uuid"
     }
   ],
