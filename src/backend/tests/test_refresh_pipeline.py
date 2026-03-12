@@ -67,12 +67,12 @@ def test_schema_bootstrap_and_seed(monkeypatch, workspace_tmp_dir: Path) -> None
             } <= set(inspector.get_table_names())
             assert session.query(Source).count() == 3
             assert session.query(Dataset).count() == 345
-            assert session.query(DatasetVersion).count() == 8
-            assert session.query(Entity).count() >= 12
-            assert session.query(MetricSeries).count() == 8
-            assert session.query(SeriesRegistry).count() == 8
-            assert session.query(Observation).count() == 20
-            assert session.query(HarmonizationEvent).count() >= 12
+            assert session.query(DatasetVersion).count() == 11
+            assert session.query(Entity).count() == 14
+            assert session.query(MetricSeries).count() == 11
+            assert session.query(SeriesRegistry).count() == 11
+            assert session.query(Observation).count() == 30
+            assert session.query(HarmonizationEvent).count() == 38
             assert session.query(EvidenceRegistry).count() > session.query(Observation).count()
     finally:
         runtime.shutdown()
@@ -158,9 +158,9 @@ def test_scheduler_can_trigger_local_refreshes(monkeypatch, workspace_tmp_dir: P
         runs = scheduler.run_once(force=True)
 
         with get_session_factory()() as session:
-            assert runs == 8
-            assert session.query(DatasetVersion).count() == 11
-            assert session.query(Observation).count() == 23
+            assert runs == 11
+            assert session.query(DatasetVersion).count() == 14
+            assert session.query(Observation).count() == 33
     finally:
         runtime.shutdown()
     reset_runtime_state()
@@ -174,7 +174,7 @@ def test_harmonization_merges_agents_by_exact_tax_id_and_plants_by_exact_ceg(mon
             agent_entities = session.scalars(select(Entity).where(Entity.entity_type == "agent").order_by(Entity.name)).all()
             plant_entities = session.scalars(select(Entity).where(Entity.entity_type == "plant").order_by(Entity.name)).all()
 
-            assert len(agent_entities) == 2
+            assert len(agent_entities) == 3
             assert len(plant_entities) == 2
 
             itaipu_agent = session.scalar(select(Entity).where(Entity.name == "Itaipu Binacional", Entity.entity_type == "agent"))

@@ -23,8 +23,8 @@ def test_catalog_endpoints_use_persisted_data(client: TestClient) -> None:
     assert coverage.status_code == 200
     coverage_payload = coverage.json()
     assert coverage_payload["inventoried_total"] == 345
-    assert coverage_payload["published_total"] == 8
-    assert coverage_payload["documented_only_total"] == 337
+    assert coverage_payload["published_total"] == 11
+    assert coverage_payload["documented_only_total"] == 334
 
     datasets = client.get("/api/v1/datasets", params={"source": "ons", "q": "carga_horaria_submercado"})
     assert datasets.status_code == 200
@@ -40,7 +40,7 @@ def test_catalog_endpoints_use_persisted_data(client: TestClient) -> None:
     assert dataset.json()["refresh_frequency"] == "daily"
     assert dataset.json()["ingestion_status"] == "published"
 
-    documented_only = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_DIARIA"})
+    documented_only = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_SEMANAL"})
     assert documented_only.status_code == 200
     assert documented_only.json()["items"][0]["ingestion_status"] == "documented_only"
     assert documented_only.json()["items"][0]["adapter_enabled"] is False
@@ -81,7 +81,7 @@ def test_manual_refresh_returns_accepted(client: TestClient) -> None:
 
 
 def test_documented_only_dataset_cannot_be_refreshed(client: TestClient) -> None:
-    datasets = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_DIARIA"})
+    datasets = client.get("/api/v1/datasets", params={"source": "ccee", "q": "PLD_MEDIA_SEMANAL"})
     dataset_id = datasets.json()["items"][0]["id"]
 
     response = client.post(f"/api/v1/admin/datasets/{dataset_id}/refresh")

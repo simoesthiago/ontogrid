@@ -23,8 +23,7 @@ OntoGrid e uma plataforma vertical de dados, ontologia e IA aplicada para o seto
 
 - Enterprise Data Plane tenant-scoped.
 - Federacao com dados privados do cliente.
-- Vigilancia Operacional de Ativos (antigo recorte `Asset Health`).
-- Reliability / Outage Intelligence, Smart Alerting Copilot, Technical Issue Resolution Assistant e Field Ops.
+- Apps como de Reliability / Outage Intelligence, Smart Alerting Copilot, Technical Issue Resolution Assistant, Field Ops, entre outros
 
 ## Estado atual do repo
 
@@ -51,21 +50,12 @@ O repositorio agora contem:
 11. [docs/platform/TECH_STACK.md](docs/platform/TECH_STACK.md)
 12. [docs/platform/INFRA_DEPLOY.md](docs/platform/INFRA_DEPLOY.md)
 
-## Contexto estrategico
-
-Os PDFs historicos permanecem versionados em `docs/`:
-
-- [docs/strategy/Plataforma_Ontologica_Produto_Estrategia.pdf](docs/strategy/Plataforma_Ontologica_Produto_Estrategia.pdf)
-- [docs/strategy/Analise_Estrategica_Plataforma_Ontologica_Setor_Eletrico.pdf](docs/strategy/Analise_Estrategica_Plataforma_Ontologica_Setor_Eletrico.pdf)
-
-O raciocinio do documento estrategico de marco de 2025 sobre GenAI foi consolidado em [docs/strategy/HISTORICO_E_RECONCILIACAO.md](docs/strategy/HISTORICO_E_RECONCILIACAO.md) e [docs/strategy/PORTFOLIO_E_ROADMAP.md](docs/strategy/PORTFOLIO_E_ROADMAP.md).
-
 ## Estrutura
 
 ```text
 ontogrid/
 |-- docs/
-|   |-- strategy/         # Visao, portfolio, historico e PDFs estrategicos
+|   |-- strategy/         # Visao e PDFs estrategicos
 |   |-- product/          # MVP publico, roadmap e user stories
 |   |-- contracts/        # Contratos HTTP
 |   `-- platform/         # Arquitetura, modelo, ingestao, stack e deploy

@@ -454,3 +454,106 @@ class AneelDecFecAdapter(CkanDatasetAdapter):
             ],
             observations=observations,
         )
+
+
+class AneelAgentesGeracaoAdapter(CkanDatasetAdapter):
+    dataset_code = "agentes_geracao_aneel"
+    source_code = "aneel"
+    fixture_name = "aneel_agentes_geracao.csv"
+    settings_url_field = "aneel_agentes_geracao_url"
+    ckan_base_url_field = "aneel_ckan_base_url"
+    ckan_package_id_field = "aneel_agentes_geracao_package_id"
+    ckan_resource_id_field = "aneel_agentes_geracao_resource_id"
+
+    def parse(self, raw_bytes: bytes, checksum: str) -> ParsedDatasetPayload:
+        rows = self.parse_csv_rows(raw_bytes)
+        timestamps = [self.parse_datetime(row["reference_month"]) for row in rows]
+        published_at = max(timestamps)
+
+        entities_by_key: dict[str, ParsedEntity] = {}
+        aliases_by_key: dict[tuple[str, str], ParsedEntityAlias] = {}
+        observations: list[ParsedObservation] = []
+
+        for row in rows:
+            observed_at = self.parse_datetime(row["reference_month"])
+            agent_id = agent_code(row["agent_name"], row.get("agent_cnpj"))
+            agent_key = f"agent:{agent_id}"
+            entities_by_key.setdefault(
+                agent_key,
+                ParsedEntity(
+                    key=agent_key,
+                    entity_type="agent",
+                    canonical_code=agent_id,
+                    name=row["agent_name"].strip(),
+                    jurisdiction=row.get("state", "BR") or "BR",
+                    attributes={
+                        "tax_id": row.get("agent_cnpj", "").strip() or None,
+                        "legal_name": row["agent_name"].strip(),
+                        "profile_kind": "sector",
+                        "role": "generator",
+                        "source_code": self.source_code,
+                        "status": row.get("status", "active").strip() or "active",
+                    },
+                ),
+            )
+            aliases_by_key.setdefault(
+                (agent_key, row["agent_name"]),
+                ParsedEntityAlias(
+                    entity_key=agent_key,
+                    source_code=self.source_code,
+                    alias_name=row["agent_name"].strip(),
+                    external_code=row.get("agent_cnpj", "").strip() or agent_id,
+                    confidence=1.0,
+                ),
+            )
+            if row.get("agent_code"):
+                aliases_by_key.setdefault(
+                    (agent_key, row["agent_code"]),
+                    ParsedEntityAlias(
+                        entity_key=agent_key,
+                        source_code=self.source_code,
+                        alias_name=row["agent_code"].strip(),
+                        external_code=row["agent_code"].strip(),
+                        confidence=1.0,
+                    ),
+                )
+
+            observations.append(
+                ParsedObservation(
+                    series_key="series:granted_capacity_mw",
+                    entity_key=agent_key,
+                    time=observed_at,
+                    value_numeric=float(row["granted_capacity_mw"]),
+                    published_at=published_at,
+                )
+            )
+
+        version = ParsedDatasetVersion(
+            label=published_at.strftime("%Y-%m"),
+            extracted_at=published_at,
+            published_at=published_at,
+            coverage_start=min(timestamps),
+            coverage_end=max(timestamps),
+            row_count=len(rows),
+            schema_version="v1",
+            checksum=checksum,
+        )
+        return ParsedDatasetPayload(
+            dataset_version=version,
+            entities=list(entities_by_key.values()),
+            aliases=list(aliases_by_key.values()),
+            metric_series=[
+                ParsedMetricSeries(
+                    key="series:granted_capacity_mw",
+                    metric_code="granted_capacity_mw",
+                    metric_name="Capacidade outorgada agregada",
+                    unit="MW",
+                    temporal_granularity="month",
+                    entity_type="agent",
+                    semantic_value_type="regulatory_effective",
+                    reference_time_kind="reference_month",
+                    dimensions={"source": "aneel"},
+                )
+            ],
+            observations=observations,
+        )

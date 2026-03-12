@@ -256,18 +256,18 @@ Response `200`:
 ```json
 {
   "inventoried_total": 345,
-  "documented_only_total": 337,
+  "documented_only_total": 334,
   "adapter_enabled_total": 0,
-  "published_total": 8,
+  "published_total": 11,
   "sources": [
     {
       "source_code": "aneel",
       "source_name": "ANEEL",
       "source_document": "docs/datasets/datasets_ANEEL.md",
       "inventoried_total": 69,
-      "documented_only_total": 66,
+      "documented_only_total": 65,
       "adapter_enabled_total": 0,
-      "published_total": 3
+      "published_total": 4
     }
   ],
   "families": [
