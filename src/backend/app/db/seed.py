@@ -4,10 +4,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog_inventory import get_dataset_seeds, get_source_seeds
-from app.db.models import Dataset, Source
+from app.db.models import AppUser, Dataset, Source
 
 
 def seed_reference_catalog(session: Session) -> None:
+    if session.get(AppUser, "demo-user") is None:
+        session.add(
+            AppUser(
+                id="demo-user",
+                email=None,
+                display_name="Demo User",
+            )
+        )
+
     existing_source_ids = set(session.scalars(select(Source.id)).all())
     for payload in get_source_seeds():
         if payload["id"] not in existing_source_ids:

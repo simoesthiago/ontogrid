@@ -3,6 +3,20 @@ from pydantic import BaseModel, Field
 from app.schemas.graph import GraphNeighborsResponse
 
 
+class EntityListItem(BaseModel):
+    id: str
+    entity_type: str
+    canonical_code: str
+    name: str
+    aliases: list[str]
+    jurisdiction: str
+
+
+class EntityListResponse(BaseModel):
+    items: list[EntityListItem]
+    total: int
+
+
 class EntityProfileIdentity(BaseModel):
     id: str
     entity_type: str

@@ -305,6 +305,38 @@ class CopilotTrace(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class AppUser(Base):
+    __tablename__ = "app_user"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
+    display_name: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    saved_views: Mapped[list["SavedView"]] = relationship(back_populates="user")
+
+
+class SavedView(Base):
+    __tablename__ = "saved_view"
+    __table_args__ = (
+        Index("ix_saved_view_scope", "user_id", "scope_type", "scope_id"),
+        Index("ix_saved_view_updated_at", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("app_user.id"), index=True)
+    scope_type: Mapped[str] = mapped_column(String(32), index=True)
+    scope_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    user: Mapped[AppUser] = relationship(back_populates="saved_views")
+
+
 class PartyMaster(Base):
     __tablename__ = "party_master"
 

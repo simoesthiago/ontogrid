@@ -351,19 +351,20 @@ Response `200`:
 }
 ```
 
-## 6. Graph
+## 6. Entities
 
-### `GET /api/v1/graph/entities`
+### `GET /api/v1/entities`
 
-Observacao operacional:
+Observacoes operacionais:
 
-- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+- este e o endpoint primario para navegacao por entidades no produto;
+- nao depende de Neo4j para listar o catalogo canonico;
+- `entity_type` aceita os tipos publicos canonicos do MVP, como `agent`, `distributor`, `plant`, `submarket` e `reservoir`.
 
 Query params:
 
 - `q`
 - `entity_type`
-- `source`
 - `limit`
 - `offset`
 
@@ -384,53 +385,6 @@ Response `200`:
   "total": 1
 }
 ```
-
-### `GET /api/v1/graph/entities/{entity_id}`
-
-Observacao operacional:
-
-- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
-
-Response `200`:
-
-```json
-{
-  "id": "uuid",
-  "entity_type": "submarket",
-  "canonical_code": "SE-CO",
-  "name": "Sudeste/Centro-Oeste",
-  "attributes": {
-    "source_code": "ons",
-    "operator_code": "SE-CO"
-  }
-}
-```
-
-### `GET /api/v1/graph/entities/{entity_id}/neighbors`
-
-Observacao operacional:
-
-- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
-
-Response `200`:
-
-```json
-{
-  "entity_id": "uuid",
-  "nodes": [
-    { "id": "uuid", "type": "Entity", "name": "Sudeste/Centro-Oeste" },
-    { "id": "uuid", "type": "Dataset", "name": "Carga horaria por submercado" }
-  ],
-  "edges": [
-    { "source": "uuid", "target": "uuid", "type": "REFERENCES" }
-  ],
-  "provenance": {
-    "dataset_version_ids": ["uuid"]
-  }
-}
-```
-
-## 7. Entity Profile
 
 ### `GET /api/v1/entities/{entity_id}/profile`
 
@@ -538,7 +492,229 @@ Response `200`:
 }
 ```
 
-## 8. Insights
+## 7. Views
+
+### `GET /api/v1/views`
+
+Query params:
+
+- `scope_type`
+- `scope_id`
+
+Response `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "user_id": "demo-user",
+      "scope_type": "dataset",
+      "scope_id": "uuid",
+      "name": "Carga por submercado",
+      "description": null,
+      "config_json": {
+        "dataset_id": "uuid",
+        "entity_id": null,
+        "rows": ["entity_name"],
+        "columns": [],
+        "filters": [],
+        "measures": [
+          { "field": "load_mw", "aggregation": "sum" }
+        ],
+        "visualization": { "type": "table" }
+      },
+      "created_at": "2026-03-13T12:00:00Z",
+      "updated_at": "2026-03-13T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+### `POST /api/v1/views`
+
+Request:
+
+```json
+{
+  "scope_type": "entity",
+  "scope_id": "uuid",
+  "name": "PLD da entidade",
+  "description": null,
+  "config_json": {
+    "dataset_id": "uuid",
+    "entity_id": "uuid",
+    "rows": ["timestamp"],
+    "columns": [],
+    "filters": [],
+    "measures": [
+      { "field": "pld_avg_rs_mwh", "aggregation": "avg" }
+    ],
+    "visualization": { "type": "line" }
+  }
+}
+```
+
+### `PATCH /api/v1/views/{view_id}`
+
+Atualiza `name`, `description` e/ou `config_json`.
+
+### `DELETE /api/v1/views/{view_id}`
+
+Retorna `204`.
+
+## 8. Analysis
+
+### `GET /api/v1/analysis/datasets/{dataset_id}/fields`
+
+Response `200`:
+
+```json
+{
+  "dataset_id": "uuid",
+  "dimensions": [
+    { "id": "entity_name", "label": "Submarket", "kind": "entity" },
+    { "id": "timestamp", "label": "Timestamp", "kind": "time" }
+  ],
+  "metrics": [
+    {
+      "field": "load_mw",
+      "label": "Carga",
+      "unit": "MW",
+      "supported_aggregations": ["sum", "avg", "count", "min", "max"]
+    }
+  ],
+  "time_fields": ["timestamp"],
+  "entity_field": "entity_name",
+  "default_measure": "load_mw"
+}
+```
+
+### `POST /api/v1/analysis/query`
+
+Request:
+
+```json
+{
+  "config": {
+    "dataset_id": "uuid",
+    "entity_id": null,
+    "rows": ["entity_name"],
+    "columns": [],
+    "filters": [],
+    "measures": [
+      { "field": "load_mw", "aggregation": "sum" }
+    ],
+    "visualization": { "type": "table" }
+  }
+}
+```
+
+Response `200`:
+
+```json
+{
+  "dataset_id": "uuid",
+  "columns": [
+    { "id": "entity_name", "label": "Submarket", "kind": "dimension" },
+    { "id": "load_mw__sum", "label": "Load Mw Sum", "kind": "measure" }
+  ],
+  "rows": [
+    {
+      "values": {
+        "entity_name": "Sudeste/Centro-Oeste",
+        "load_mw__sum": 81234.5
+      }
+    }
+  ],
+  "totals": {
+    "load_mw__sum": 81234.5
+  },
+  "applied_filters": []
+}
+```
+
+## 9. Graph
+
+### `GET /api/v1/graph/entities`
+
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+
+Query params:
+
+- `q`
+- `entity_type`
+- `source`
+- `limit`
+- `offset`
+
+Response `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "entity_type": "submarket",
+      "canonical_code": "SE-CO",
+      "name": "Sudeste/Centro-Oeste",
+      "aliases": ["Sudeste/Centro-Oeste"],
+      "jurisdiction": "SIN"
+    }
+  ],
+  "total": 1
+}
+```
+
+### `GET /api/v1/graph/entities/{entity_id}`
+
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+
+Response `200`:
+
+```json
+{
+  "id": "uuid",
+  "entity_type": "submarket",
+  "canonical_code": "SE-CO",
+  "name": "Sudeste/Centro-Oeste",
+  "attributes": {
+    "source_code": "ons",
+    "operator_code": "SE-CO"
+  }
+}
+```
+
+### `GET /api/v1/graph/entities/{entity_id}/neighbors`
+
+Observacao operacional:
+
+- retorna `503` quando o backend Neo4j nao estiver configurado ou disponivel.
+
+Response `200`:
+
+```json
+{
+  "entity_id": "uuid",
+  "nodes": [
+    { "id": "uuid", "type": "Entity", "name": "Sudeste/Centro-Oeste" },
+    { "id": "uuid", "type": "Dataset", "name": "Carga horaria por submercado" }
+  ],
+  "edges": [
+    { "source": "uuid", "target": "uuid", "type": "REFERENCES" }
+  ],
+  "provenance": {
+    "dataset_version_ids": ["uuid"]
+  }
+}
+```
+
+## 10. Insights
 
 ### `GET /api/v1/insights/overview`
 
@@ -592,7 +768,7 @@ Response `200`:
 }
 ```
 
-## 9. Copilot
+## 11. Copilot
 
 ### `POST /api/v1/copilot/query`
 
@@ -640,18 +816,18 @@ Response `200`:
 }
 ```
 
-## 10. Endpoint interno
+## 12. Endpoint interno
 
 ### `GET /healthz`
 
 Usado para health check de servico. Nao faz parte do contrato de produto.
 
-## 11. Bootstrap oficial
+## 13. Bootstrap oficial
 
 - `docker compose up --build` aplica migrations Alembic e executa o bootstrap live do catalogo antes de subir a API;
 - o startup normal do app nao cria schema via ORM e assume banco migrado.
 
-## 12. Fora do contrato do MVP publico
+## 14. Fora do contrato do MVP publico
 
 - tenancy como pivote universal;
 - uploads privados e integracoes de cliente;

@@ -1,112 +1,167 @@
 import Link from "next/link";
-import { getCatalogCoverage, getDatasets } from "../../lib/api";
+
+import { getDatasets } from "../../lib/api";
+import {
+  ENERGY_HUB_SOURCES,
+  formatDateLabel,
+  getQueryValue,
+  titleCaseToken,
+} from "../../lib/energy-hub";
 
 export const dynamic = "force-dynamic";
 
-const statusMeta: Record<string, { label: string; className: string }> = {
-  published: { label: "published", className: "healthy" },
-  adapter_enabled: { label: "adapter", className: "warning" },
-  documented_only: { label: "documented", className: "" },
-};
+function buildHref(
+  current: URLSearchParams,
+  updates: Record<string, string | undefined>,
+) {
+  const next = new URLSearchParams(current);
 
-export default async function DatasetsPage() {
-  const [data, coverage] = await Promise.all([
-    getDatasets({ limit: 400 }),
-    getCatalogCoverage(),
-  ]);
-
-  const datasetsBySource = new Map<string, typeof data.items>();
-  for (const item of data.items) {
-    const existing = datasetsBySource.get(item.source_code) ?? [];
-    existing.push(item);
-    datasetsBySource.set(item.source_code, existing);
+  for (const [key, value] of Object.entries(updates)) {
+    if (value) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
   }
 
+  const query = next.toString();
+  return query ? `/datasets?${query}` : "/datasets";
+}
+
+export default async function DatasetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const query = getQueryValue(resolvedSearchParams.q)?.trim() ?? "";
+  const sourceFilter = getQueryValue(resolvedSearchParams.source) ?? "all";
+  const sort = getQueryValue(resolvedSearchParams.sort) ?? "name";
+  const searchState = new URLSearchParams();
+
+  if (query) {
+    searchState.set("q", query);
+  }
+  if (sourceFilter && sourceFilter !== "all") {
+    searchState.set("source", sourceFilter);
+  }
+  if (sort !== "name") {
+    searchState.set("sort", sort);
+  }
+
+  const datasetsResponse = await getDatasets({
+    limit: 400,
+    q: query || undefined,
+    source: sourceFilter !== "all" ? sourceFilter : undefined,
+  });
+
+  const datasets = [...datasetsResponse.items].sort((left, right) => {
+    if (sort === "updated") {
+      return (right.latest_published_at || "").localeCompare(left.latest_published_at || "");
+    }
+    if (sort === "source") {
+      return `${left.source_code}-${left.name}`.localeCompare(`${right.source_code}-${right.name}`);
+    }
+    return left.name.localeCompare(right.name);
+  });
+
   return (
-    <section className="stack">
-      <header>
-        <p className="eyebrow">Datasets</p>
-        <h2>Universo documentado do Energy Data Hub</h2>
-        <p className="muted">
-          O catalogo agora reflete os inventarios de ANEEL, ONS e CCEE. O status de cada
-          dataset deixa claro se ele esta apenas documentado, se ja tem adapter ou se ja
-          publica versoes no runtime.
+    <section className="stack pageStack">
+      <header className="pageHeader">
+        <p className="pageKicker">Energy Hub</p>
+        <h1 className="pageTitle">Datasets</h1>
+        <p className="pageSubtitle">
+          Datasets sao o insumo base do produto. Eles chegam das fontes publicas, sustentam a
+          analise e alimentam a navegacao por entidades.
         </p>
       </header>
 
-      <div className="grid three">
-        <article className="card">
-          <p className="eyebrow">Inventoried</p>
-          <strong>{coverage.inventoried_total}</strong>
-          <span className="muted">datasets mapeados nos documentos</span>
-        </article>
-        <article className="card">
-          <p className="eyebrow">Implemented</p>
-          <strong>{coverage.adapter_enabled_total + coverage.published_total}</strong>
-          <span className="muted">datasets com pipeline real</span>
-        </article>
-        <article className="card">
-          <p className="eyebrow">Published</p>
-          <strong>{coverage.published_total}</strong>
-          <span className="muted">datasets com versao carregada</span>
-        </article>
-      </div>
+      <section className="panel">
+        <div className="toolbar">
+          <form action="/datasets" className="searchForm grow">
+            <input type="hidden" name="source" value={sourceFilter} />
+            <input type="hidden" name="sort" value={sort} />
+            <input
+              className="searchInput"
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Buscar dataset por nome ou codigo"
+              aria-label="Buscar dataset"
+            />
+          </form>
 
-      {coverage.sources.map((source) => {
-        const items = datasetsBySource.get(source.source_code) ?? [];
-        return (
-          <section key={source.source_code} className="stack">
-            <article className="card">
-              <div className="row">
-                <div>
-                  <p className="eyebrow">{source.source_code}</p>
-                  <h3>{source.source_name}</h3>
-                </div>
-                <span className="pill">{source.inventoried_total} datasets</span>
-              </div>
-              <p className="muted">{source.source_document}</p>
-              <div className="grid three">
-                <div>
-                  <strong>{source.documented_only_total}</strong>
-                  <p className="muted">so documentados</p>
-                </div>
-                <div>
-                  <strong>{source.adapter_enabled_total}</strong>
-                  <p className="muted">com adapter sem publicacao</p>
-                </div>
-                <div>
-                  <strong>{source.published_total}</strong>
-                  <p className="muted">publicados</p>
-                </div>
-              </div>
-            </article>
-
-            <div className="grid">
-              {items.map((dataset) => {
-                const status = statusMeta[dataset.ingestion_status] ?? statusMeta.documented_only;
-                return (
-                  <article key={dataset.id} className="card">
-                    <div className="row">
-                      <Link href={`/datasets/${dataset.id}`}>
-                        <strong>{dataset.name}</strong>
-                      </Link>
-                      <span className={`pill ${status.className}`}>{status.label}</span>
-                    </div>
-                    <p className="muted">{dataset.code}</p>
-                    <p>{dataset.domain}</p>
-                    <p className="muted">Granularidade: {dataset.granularity}</p>
-                    <p className="muted">
-                      {dataset.latest_version
-                        ? `Ultima versao: ${dataset.latest_version}`
-                        : "Sem versao publicada"}
-                    </p>
-                  </article>
-                );
+          <div className="toolbarActions">
+            <Link
+              href={buildHref(searchState, {
+                sort: sort === "updated" ? "name" : "updated",
               })}
-            </div>
-          </section>
-        );
-      })}
+              className="iconButton"
+            >
+              Ordenar
+            </Link>
+            <Link href={buildHref(searchState, { sort: "source" })} className="iconButton">
+              Fonte
+            </Link>
+          </div>
+        </div>
+
+        <div className="filterChips">
+          {ENERGY_HUB_SOURCES.map((source) => (
+            <Link
+              key={source.id}
+              href={buildHref(searchState, {
+                source: source.id === "all" ? undefined : source.id,
+              })}
+              className={`filterChip ${sourceFilter === source.id ? "isSelected" : ""}`}
+            >
+              {source.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="tableWrap">
+          <table className="dataTable">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Grupo</th>
+                <th>Fonte</th>
+                <th>Ultima atualizacao</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {datasets.length ? (
+                datasets.map((dataset) => (
+                  <tr key={dataset.id}>
+                    <td>
+                      <Link href={`/analysis?dataset=${dataset.id}`} className="tablePrimaryLink">
+                        {dataset.name}
+                      </Link>
+                      <div className="tableSecondary">{dataset.code}</div>
+                    </td>
+                    <td>{titleCaseToken(dataset.domain)}</td>
+                    <td>{dataset.source_code.toUpperCase()}</td>
+                    <td>{formatDateLabel(dataset.latest_published_at)}</td>
+                    <td>
+                      <span className={`statusPill ${dataset.ingestion_status === "published" ? "" : "mutedPill"}`}>
+                        {dataset.ingestion_status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="emptyState">Nenhum dataset encontrado com os filtros atuais.</div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
   );
 }

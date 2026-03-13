@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import distinct, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import (
     AgentProfileMaster,
@@ -25,6 +25,49 @@ from app.services.graph_service import GraphBackendUnavailable, get_graph_servic
 
 
 class EntityProfileService:
+    def list_entities(
+        self,
+        session: Session,
+        *,
+        q: str | None,
+        entity_type: str | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, object]], int]:
+        query = select(Entity).options(selectinload(Entity.aliases)).order_by(Entity.entity_type, Entity.name)
+
+        if entity_type:
+            query = query.where(Entity.entity_type == entity_type)
+
+        if q:
+            term = f"%{q.lower()}%"
+            query = (
+                query.outerjoin(EntityAlias, EntityAlias.entity_id == Entity.id)
+                .where(
+                    or_(
+                        func.lower(Entity.name).like(term),
+                        func.lower(func.coalesce(Entity.canonical_code, "")).like(term),
+                        func.lower(EntityAlias.alias_name).like(term),
+                    )
+                )
+                .distinct()
+            )
+
+        total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
+        rows = session.scalars(query.offset(offset).limit(limit)).unique().all()
+
+        return [
+            {
+                "id": entity.id,
+                "entity_type": entity.entity_type,
+                "canonical_code": entity.canonical_code or "",
+                "name": entity.name,
+                "aliases": sorted({alias.alias_name for alias in entity.aliases if alias.alias_name}),
+                "jurisdiction": entity.jurisdiction,
+            }
+            for entity in rows
+        ], total
+
     def get_profile(self, session: Session, entity_id: str) -> dict[str, object] | None:
         entity = session.get(Entity, entity_id)
         if entity is None:

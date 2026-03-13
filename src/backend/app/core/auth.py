@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.schemas.auth import RequestContext
 
 bearer_scheme = HTTPBearer(auto_error=False)
+DEMO_USER_FALLBACK = "demo-user"
 
 
 def create_access_token(user_id: str, tenant_id: str, role: str) -> str:
@@ -43,3 +44,10 @@ def get_request_context(
         tenant_id=str(payload["tenant_id"]),
         role=str(payload["role"]),
     )
+
+
+def get_demo_user_id(
+    x_demo_user_id: str | None = Header(default=None, alias="X-Demo-User-Id"),
+) -> str:
+    candidate = (x_demo_user_id or DEMO_USER_FALLBACK).strip()
+    return candidate or DEMO_USER_FALLBACK

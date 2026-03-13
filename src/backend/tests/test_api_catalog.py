@@ -116,6 +116,11 @@ def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient)
     entity_id = entities.json()["items"][0]["id"]
     assert entities.json()["items"][0]["canonical_code"] == "SE-CO"
 
+    entity_catalog = client.get("/api/v1/entities", params={"entity_type": "submarket", "q": "sudeste"})
+    assert entity_catalog.status_code == 200
+    assert entity_catalog.json()["total"] >= 1
+    assert entity_catalog.json()["items"][0]["id"] == entity_id
+
     entity = client.get(f"/api/v1/graph/entities/{entity_id}")
     assert entity.status_code == 200
     assert entity.json()["entity_type"] == "submarket"
@@ -139,6 +144,120 @@ def test_series_graph_and_insights_routes_use_persisted_data(client: TestClient)
     assert profile.json()["graph_status"] == "available"
     assert profile.json()["neighbors"] is not None
     assert profile.json()["evidence"]
+
+    analysis_fields = client.get("/api/v1/analysis/datasets/ds-ons-carga/fields")
+    assert analysis_fields.status_code == 200
+    assert analysis_fields.json()["default_measure"] == "load_mw"
+    assert analysis_fields.json()["entity_field"] == "entity_name"
+
+    analysis_query = client.post(
+        "/api/v1/analysis/query",
+        json={
+            "config": {
+                "dataset_id": "ds-ons-carga",
+                "entity_id": None,
+                "rows": ["entity_name"],
+                "columns": [],
+                "filters": [],
+                "measures": [{"field": "load_mw", "aggregation": "sum"}],
+                "visualization": {"type": "table"},
+            }
+        },
+    )
+    assert analysis_query.status_code == 200
+    assert analysis_query.json()["rows"]
+    assert "load_mw__sum" in analysis_query.json()["totals"]
+
+    filtered_analysis = client.post(
+        "/api/v1/analysis/query",
+        json={
+            "config": {
+                "dataset_id": "ds-ons-carga",
+                "entity_id": entity_id,
+                "rows": ["entity_name"],
+                "columns": [],
+                "filters": [],
+                "measures": [{"field": "load_mw", "aggregation": "sum"}],
+                "visualization": {"type": "table"},
+            }
+        },
+    )
+    assert filtered_analysis.status_code == 200
+    assert len(filtered_analysis.json()["rows"]) == 1
+
+
+def test_saved_views_are_scoped_by_user_and_scope(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/v1/views",
+        headers={"X-Demo-User-Id": "analyst-a"},
+        json={
+            "scope_type": "dataset",
+            "scope_id": "ds-ons-carga",
+            "name": "Carga base",
+            "description": "View inicial",
+            "config_json": {
+                "dataset_id": "ds-ons-carga",
+                "entity_id": None,
+                "rows": ["entity_name"],
+                "columns": [],
+                "filters": [],
+                "measures": [{"field": "load_mw", "aggregation": "sum"}],
+                "visualization": {"type": "table"},
+            },
+        },
+    )
+    assert create_response.status_code == 201
+    view_id = create_response.json()["id"]
+
+    owner_list = client.get(
+        "/api/v1/views",
+        headers={"X-Demo-User-Id": "analyst-a"},
+        params={"scope_type": "dataset", "scope_id": "ds-ons-carga"},
+    )
+    assert owner_list.status_code == 200
+    assert owner_list.json()["total"] == 1
+    assert owner_list.json()["items"][0]["id"] == view_id
+
+    other_user_list = client.get(
+        "/api/v1/views",
+        headers={"X-Demo-User-Id": "analyst-b"},
+        params={"scope_type": "dataset", "scope_id": "ds-ons-carga"},
+    )
+    assert other_user_list.status_code == 200
+    assert other_user_list.json()["total"] == 0
+
+    update_response = client.patch(
+        f"/api/v1/views/{view_id}",
+        headers={"X-Demo-User-Id": "analyst-a"},
+        json={
+            "name": "Carga atualizada",
+            "config_json": {
+                "dataset_id": "ds-ons-carga",
+                "entity_id": None,
+                "rows": ["timestamp"],
+                "columns": [],
+                "filters": [],
+                "measures": [{"field": "load_mw", "aggregation": "avg"}],
+                "visualization": {"type": "line"},
+            },
+        },
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["name"] == "Carga atualizada"
+    assert update_response.json()["description"] == "View inicial"
+    assert update_response.json()["config_json"]["visualization"]["type"] == "line"
+
+    unauthorized_delete = client.delete(
+        f"/api/v1/views/{view_id}",
+        headers={"X-Demo-User-Id": "analyst-b"},
+    )
+    assert unauthorized_delete.status_code == 404
+
+    delete_response = client.delete(
+        f"/api/v1/views/{view_id}",
+        headers={"X-Demo-User-Id": "analyst-a"},
+    )
+    assert delete_response.status_code == 204
 
 
 def test_graph_routes_require_backend_when_not_configured(client_without_graph_backend: TestClient) -> None:

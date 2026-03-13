@@ -2,6 +2,10 @@ const API_BASE =
   process.env.API_BASE_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8000/api/v1";
+const DEMO_USER_ID =
+  process.env.API_DEMO_USER_ID ??
+  process.env.NEXT_PUBLIC_DEMO_USER_ID ??
+  "demo-user";
 
 export interface SourceItem {
   id: string;
@@ -92,6 +96,20 @@ export interface GraphEntityItem {
 
 export interface GraphEntityListResponse {
   items: GraphEntityItem[];
+  total: number;
+}
+
+export interface EntityListItem {
+  id: string;
+  entity_type: string;
+  canonical_code: string;
+  name: string;
+  aliases: string[];
+  jurisdiction: string;
+}
+
+export interface EntityListResponse {
+  items: EntityListItem[];
   total: number;
 }
 
@@ -311,10 +329,101 @@ export interface RefreshJobListResponse {
   total: number;
 }
 
+export interface AnalysisFieldItem {
+  id: string;
+  label: string;
+  kind: "entity" | "time" | "dimension";
+}
+
+export interface AnalysisMetricItem {
+  field: string;
+  label: string;
+  unit: string;
+  supported_aggregations: Array<"sum" | "avg" | "count" | "min" | "max">;
+}
+
+export interface AnalysisFieldsResponse {
+  dataset_id: string;
+  dimensions: AnalysisFieldItem[];
+  metrics: AnalysisMetricItem[];
+  time_fields: string[];
+  entity_field?: string | null;
+  default_measure?: string | null;
+}
+
+export interface AnalysisFilter {
+  field: string;
+  operator: "in";
+  values: string[];
+}
+
+export interface AnalysisMeasure {
+  field: string;
+  aggregation: "sum" | "avg" | "count" | "min" | "max";
+}
+
+export interface AnalysisVisualization {
+  type: "table" | "bar" | "column" | "line" | "pie";
+}
+
+export interface AnalysisViewConfig {
+  dataset_id: string;
+  entity_id?: string | null;
+  rows: string[];
+  columns: string[];
+  filters: AnalysisFilter[];
+  measures: AnalysisMeasure[];
+  visualization: AnalysisVisualization;
+}
+
+export interface AnalysisQueryColumn {
+  id: string;
+  label: string;
+  kind: "dimension" | "measure";
+}
+
+export interface AnalysisQueryRow {
+  values: Record<string, string | number | null>;
+}
+
+export interface AnalysisQueryResponse {
+  dataset_id: string;
+  columns: AnalysisQueryColumn[];
+  rows: AnalysisQueryRow[];
+  totals: Record<string, number | null>;
+  applied_filters: AnalysisFilter[];
+}
+
+export interface SavedViewItem {
+  id: string;
+  user_id: string;
+  scope_type: "dataset" | "entity";
+  scope_id: string;
+  name: string;
+  description?: string | null;
+  config_json: AnalysisViewConfig;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedViewListResponse {
+  items: SavedViewItem[];
+  total: number;
+}
+
+function withDefaultHeaders(headers?: HeadersInit): Headers {
+  const merged = new Headers(headers);
+  if (!merged.has("X-Demo-User-Id")) {
+    merged.set("X-Demo-User-Id", DEMO_USER_ID);
+  }
+  return merged;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     next: { revalidate: 60 },
     ...options,
+    headers: withDefaultHeaders(options?.headers),
   });
   if (!res.ok) {
     throw new Error(`API error ${res.status} on ${path}`);
@@ -386,6 +495,21 @@ export async function getGraphEntities(params?: {
   if (params?.offset !== undefined) qs.set("offset", String(params.offset));
   const query = qs.toString() ? `?${qs}` : "";
   return apiFetch<GraphEntityListResponse>(`/graph/entities${query}`);
+}
+
+export async function getEntities(params?: {
+  q?: string;
+  entity_type?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<EntityListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.entity_type) qs.set("entity_type", params.entity_type);
+  if (params?.limit !== undefined) qs.set("limit", String(params.limit));
+  if (params?.offset !== undefined) qs.set("offset", String(params.offset));
+  const query = qs.toString() ? `?${qs}` : "";
+  return apiFetch<EntityListResponse>(`/entities${query}`);
 }
 
 export async function getEntityNeighbors(entityId: string): Promise<GraphNeighborsResponse> {
@@ -467,11 +591,87 @@ export async function getRefreshJobs(params?: {
   return apiFetch<RefreshJobListResponse>(`/admin/refresh-jobs${query}`);
 }
 
+export async function getAnalysisFields(datasetId: string): Promise<AnalysisFieldsResponse> {
+  return apiFetch<AnalysisFieldsResponse>(`/analysis/datasets/${datasetId}/fields`, {
+    cache: "no-store",
+  });
+}
+
+export async function runAnalysisQuery(config: AnalysisViewConfig): Promise<AnalysisQueryResponse> {
+  return apiFetch<AnalysisQueryResponse>("/analysis/query", {
+    method: "POST",
+    cache: "no-store",
+    headers: withDefaultHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({ config }),
+  });
+}
+
+export async function getSavedViews(params: {
+  scope_type: "dataset" | "entity";
+  scope_id: string;
+}): Promise<SavedViewListResponse> {
+  const qs = new URLSearchParams();
+  qs.set("scope_type", params.scope_type);
+  qs.set("scope_id", params.scope_id);
+  return apiFetch<SavedViewListResponse>(`/views?${qs.toString()}`, {
+    cache: "no-store",
+  });
+}
+
+export async function createSavedView(payload: {
+  scope_type: "dataset" | "entity";
+  scope_id: string;
+  name: string;
+  description?: string | null;
+  config_json: AnalysisViewConfig;
+}): Promise<SavedViewItem> {
+  return apiFetch<SavedViewItem>("/views", {
+    method: "POST",
+    cache: "no-store",
+    headers: withDefaultHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateSavedView(
+  viewId: string,
+  payload: {
+    name?: string;
+    description?: string | null;
+    config_json?: AnalysisViewConfig;
+  },
+): Promise<SavedViewItem> {
+  return apiFetch<SavedViewItem>(`/views/${viewId}`, {
+    method: "PATCH",
+    cache: "no-store",
+    headers: withDefaultHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteSavedView(viewId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/views/${viewId}`, {
+    method: "DELETE",
+    cache: "no-store",
+    headers: withDefaultHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`API error ${res.status} on /views/${viewId}`);
+  }
+}
+
 export async function queryCopilot(payload: CopilotQueryRequest): Promise<CopilotQueryResponse> {
   const res = await fetch(`${API_BASE}/copilot/query`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-Demo-User-Id": DEMO_USER_ID,
     },
     body: JSON.stringify(payload),
   });
