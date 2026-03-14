@@ -26,3 +26,5 @@ src/backend/.tmp/test-runtime/
 src/backend/.test-runtime/
 Thumbs.db
 .claude/
+.playwright-mcp/
+

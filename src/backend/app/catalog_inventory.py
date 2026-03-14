@@ -33,7 +33,8 @@ class CatalogDatasetSeed:
     schema_summary: dict[str, list[str]]
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_file_parents = Path(__file__).resolve().parents
+_REPO_ROOT = _file_parents[3] if len(_file_parents) > 3 else _file_parents[1]
 
 SOURCE_DEFINITIONS: tuple[CatalogSourceDefinition, ...] = (
     CatalogSourceDefinition(

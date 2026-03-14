@@ -66,15 +66,10 @@ export default async function DatasetsPage({
   });
 
   return (
-    <section className="stack pageStack">
-      <header className="pageHeader">
-        <p className="pageKicker">Energy Hub</p>
+    <div className="pageWorkspace">
+      <div className="pageTitleBar">
         <h1 className="pageTitle">Datasets</h1>
-        <p className="pageSubtitle">
-          Datasets sao o insumo base do produto. Eles chegam das fontes publicas, sustentam a
-          analise e alimentam a navegacao por entidades.
-        </p>
-      </header>
+      </div>
 
       <section className="panel">
         <div className="toolbar">
@@ -162,6 +157,6 @@ export default async function DatasetsPage({
           </table>
         </div>
       </section>
-    </section>
+    </div>
   );
 }
