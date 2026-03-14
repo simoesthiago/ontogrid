@@ -33,7 +33,7 @@ Entregar um produto que permita:
 | PostgreSQL/TimescaleDB | `source`, `dataset`, `dataset_version`, `refresh_job`, `metric_series`, `observation`, `insight_snapshot`, `copilot_trace` |
 | Neo4j | Entidades e relacoes do Energy Graph publico |
 | Redis | Cache de consultas frequentes e montagem de contexto do copilot |
-| Next.js | Catalogo, exploracao de series, grafo, dashboards e experiencia conversacional |
+| Next.js | IA principal com `Analysis`, `Entities`, `Datasets` e `Copilot`, alem de drill-down secundario para dataset, versao e entidade |
 
 ## 4. Limites entre modulos do backend
 
@@ -67,17 +67,18 @@ Regras:
 6. Series, observacoes e relacoes sao atualizadas sem substituir o kernel.
 7. Evidencias publicas, projecao Neo4j e snapshots de insight sao rebuildados quando necessario.
 
-### 5.2 Navegacao do catalogo
+### 5.2 Navegacao principal da UI
 
-1. O frontend consulta `GET /api/v1/sources` e `GET /api/v1/datasets`.
-2. O usuario abre um dataset e suas versoes.
-3. A UI consulta series, observacoes e insights relacionados.
+1. `Datasets` organiza o catalogo publico e leva ao detalhe secundario de dataset e versoes.
+2. `Analysis` usa `GET /api/v1/datasets`, `GET /api/v1/analysis/datasets/{dataset_id}/fields` e `POST /api/v1/analysis/query`.
+3. `Entities` usa `GET /api/v1/entities` e `GET /api/v1/entities/{entity_id}/profile`.
+4. `Copilot` permanece uma pagina propria para perguntas grounded, mas pode receber contexto opcional de dataset e entidade por query params.
 
-### 5.3 Navegacao do grafo
+### 5.3 Drill-down e capacidades secundarias
 
-1. O usuario busca uma entidade em `GET /api/v1/graph/entities`.
-2. O detalhe da entidade retorna atributos canonicos.
-3. `neighbors` devolve contexto relacional com proveniencia minima.
+1. O detalhe de dataset continua responsavel por versoes, schema, series, observacoes e refresh jobs.
+2. O detalhe de entidade continua responsavel por facetas, evidencia, series e contexto relacional.
+3. Grafo, insights, coverage e sources continuam como capacidades e contratos de backend, mas nao como paginas top-level da IA atual.
 
 ### 5.4 Copilot analitico
 

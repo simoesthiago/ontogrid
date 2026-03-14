@@ -13,18 +13,10 @@ import {
 } from "../../lib/api";
 import { EnergyCanvas } from "../../components/energy-canvas";
 import { ENERGY_HUB_ENTITY_TYPES, getQueryValue, titleCaseToken } from "../../lib/energy-hub";
+import { buildPageHref, createSearchParams } from "../../lib/search-state";
 import { buildDefaultViewConfig } from "../../lib/view-defaults";
 
 export const dynamic = "force-dynamic";
-
-function buildHref(current: URLSearchParams, updates: Record<string, string | undefined>) {
-  const next = new URLSearchParams(current);
-  for (const [key, value] of Object.entries(updates)) {
-    if (value) next.set(key, value); else next.delete(key);
-  }
-  const query = next.toString();
-  return query ? `/entities?${query}` : "/entities";
-}
 
 export default async function EntitiesPage({
   searchParams,
@@ -35,10 +27,10 @@ export default async function EntitiesPage({
   const query = getQueryValue(resolvedSearchParams.q)?.trim() ?? "";
   const selectedType = getQueryValue(resolvedSearchParams.type) ?? "agent";
   const requestedEntityId = getQueryValue(resolvedSearchParams.entity);
-  const searchState = new URLSearchParams();
-
-  if (query) searchState.set("q", query);
-  if (selectedType) searchState.set("type", selectedType);
+  const searchState = createSearchParams({
+    q: query || undefined,
+    type: selectedType || undefined,
+  });
 
   const entityCatalog = await getEntities({ q: query || undefined, limit: 400 });
   const entitiesByType = ENERGY_HUB_ENTITY_TYPES.map((group) => ({
@@ -97,6 +89,7 @@ export default async function EntitiesPage({
           </div>
 
           <form action="/entities" className="searchForm">
+            <input type="hidden" name="type" value={selectedType} />
             <input
               className="searchInput"
               type="search"
@@ -125,7 +118,10 @@ export default async function EntitiesPage({
                         group.items.slice(0, 14).map((item) => (
                           <Link
                             key={item.id}
-                            href={buildHref(searchState, { type: group.id, entity: item.id })}
+                            href={buildPageHref("/entities", searchState, {
+                              type: group.id,
+                              entity: item.id,
+                            })}
                             className={`treeItem ${selectedEntity?.id === item.id ? "isActive" : ""}`}
                           >
                             <span>{item.name}</span>
@@ -157,9 +153,15 @@ export default async function EntitiesPage({
                       {profile.identity.jurisdiction}
                     </p>
                   </div>
-                  <div className="statusStack">
+                  <div className="toolbarActions">
                     <span className="statusPill">{profile.graph_status}</span>
                     <span className="statusPill mutedPill">{profile.recent_versions.length} datasets</span>
+                    <Link href={`/entities/${selectedEntity.id}`} className="inlineAction">
+                      Abrir perfil completo
+                    </Link>
+                    <Link href={`/copilot?entity=${selectedEntity.id}`} className="inlineAction">
+                      Perguntar no Copilot
+                    </Link>
                   </div>
                 </div>
               </section>
@@ -167,10 +169,8 @@ export default async function EntitiesPage({
               {initialFields && initialQuery && initialConfig ? (
                 <EnergyCanvas
                   scopeLabel={firstDatasetName}
-                  initialFields={initialFields}
                   initialQuery={initialQuery}
                   initialConfig={initialConfig}
-                  initialTitle={`${profile.identity.name} — ${firstDatasetName}`}
                   entityId={selectedEntity.id}
                 />
               ) : (

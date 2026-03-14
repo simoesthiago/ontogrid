@@ -7,7 +7,7 @@ import { ReactNode, useState } from "react";
 const energyHubLinks = [
   {
     href: "/analysis",
-    label: "Analytics",
+    label: "Analysis",
     icon: (
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="1" y="8" width="3" height="7" fill="currentColor" />
@@ -36,6 +36,20 @@ const energyHubLinks = [
         <ellipse cx="8" cy="4" rx="6" ry="2" stroke="currentColor" strokeWidth="1.5" />
         <path d="M2 4v4c0 1.1 2.69 2 6 2s6-.9 6-2V4" stroke="currentColor" strokeWidth="1.5" />
         <path d="M2 8v4c0 1.1 2.69 2 6 2s6-.9 6-2V8" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+  {
+    href: "/copilot",
+    label: "Copilot",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="3" y="4" width="10" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M8 1.5v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M5.5 8h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="5.5" cy="6.5" r=".75" fill="currentColor" />
+        <circle cx="10.5" cy="6.5" r=".75" fill="currentColor" />
+        <path d="M6 12.5v2l2-1.5 2 1.5v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },

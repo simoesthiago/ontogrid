@@ -86,10 +86,20 @@ select {
 }
 
 .stack,
+.pageStack {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
 .navStack,
-.pageStack,
 .treeGroups {
   align-content: start;
+}
+
+.navStack {
+  display: grid;
+  gap: 2px;
 }
 
 .treeGroups,
@@ -548,6 +558,31 @@ select {
   padding: 0;
 }
 
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 128px;
+  padding: 10px 12px;
+  resize: vertical;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  outline: none;
+  transition: border-color 120ms;
+}
+
+.textarea:focus {
+  border-color: var(--accent);
+}
+
+.textarea::placeholder {
+  color: var(--text-faint);
+}
+
 /* ── Filter chips ───────────────────────────────────────── */
 
 .filterChips {
@@ -860,6 +895,20 @@ details[open] > .treeGroupHeader .treeGroupIcon {
   color: var(--text-muted);
 }
 
+.tableActionRow {
+  margin-top: 8px;
+}
+
+.tableActionLink {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-hover);
+}
+
+.tableActionLink:hover {
+  color: var(--text);
+}
+
 /* ── Summary / linked cards ─────────────────────────────── */
 
 .summaryGrid {
@@ -967,6 +1016,13 @@ details[open] > .treeGroupHeader .treeGroupIcon {
   justify-content: space-between;
   gap: 12px;
   padding: 0 0 14px 0;
+}
+
+.canvasMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
 }
 
 .canvasTitle {
@@ -1116,6 +1172,10 @@ details[open] > .treeGroupHeader .treeGroupIcon {
 
 .statusStack {
   gap: 6px;
+}
+
+.critical {
+  color: var(--danger);
 }
 
 /* ── Responsive ─────────────────────────────────────────── */

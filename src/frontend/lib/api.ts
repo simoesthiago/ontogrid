@@ -7,20 +7,6 @@ const DEMO_USER_ID =
   process.env.NEXT_PUBLIC_DEMO_USER_ID ??
   "demo-user";
 
-export interface SourceItem {
-  id: string;
-  code: string;
-  name: string;
-  authority_type: string;
-  refresh_strategy: string;
-  status: string;
-}
-
-export interface SourceListResponse {
-  items: SourceItem[];
-  total: number;
-}
-
 export interface DatasetListItem {
   id: string;
   source_code: string;
@@ -85,20 +71,6 @@ export interface DatasetVersionDetailResponse extends DatasetVersionItem {
   lineage: Record<string, unknown>;
 }
 
-export interface GraphEntityItem {
-  id: string;
-  entity_type: string;
-  canonical_code: string;
-  name: string;
-  aliases: string[];
-  jurisdiction: string;
-}
-
-export interface GraphEntityListResponse {
-  items: GraphEntityItem[];
-  total: number;
-}
-
 export interface EntityListItem {
   id: string;
   entity_type: string;
@@ -132,52 +104,6 @@ export interface GraphNeighborsResponse {
   provenance: {
     dataset_version_ids: string[];
   };
-}
-
-export interface InsightCard {
-  id: string;
-  title: string;
-  value: number;
-  unit: string;
-  trend: string;
-}
-
-export interface InsightHighlight {
-  title: string;
-  dataset_version_id: string;
-}
-
-export interface InsightOverviewResponse {
-  cards: InsightCard[];
-  highlights: InsightHighlight[];
-}
-
-export interface CatalogCoverageSourceItem {
-  source_code: string;
-  source_name: string;
-  source_document: string;
-  inventoried_total: number;
-  documented_only_total: number;
-  adapter_enabled_total: number;
-  published_total: number;
-}
-
-export interface CatalogCoverageFamilyItem {
-  source_code: string;
-  family: string;
-  inventoried_total: number;
-  documented_only_total: number;
-  adapter_enabled_total: number;
-  published_total: number;
-}
-
-export interface CatalogCoverageResponse {
-  inventoried_total: number;
-  documented_only_total: number;
-  adapter_enabled_total: number;
-  published_total: number;
-  sources: CatalogCoverageSourceItem[];
-  families: CatalogCoverageFamilyItem[];
 }
 
 export interface CopilotCitation {
@@ -394,23 +320,6 @@ export interface AnalysisQueryResponse {
   applied_filters: AnalysisFilter[];
 }
 
-export interface SavedViewItem {
-  id: string;
-  user_id: string;
-  scope_type: "dataset" | "entity";
-  scope_id: string;
-  name: string;
-  description?: string | null;
-  config_json: AnalysisViewConfig;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SavedViewListResponse {
-  items: SavedViewItem[];
-  total: number;
-}
-
 function withDefaultHeaders(headers?: HeadersInit): Headers {
   const merged = new Headers(headers);
   if (!merged.has("X-Demo-User-Id")) {
@@ -429,21 +338,6 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(`API error ${res.status} on ${path}`);
   }
   return res.json() as Promise<T>;
-}
-
-export async function getSources(params?: {
-  q?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
-}): Promise<SourceListResponse> {
-  const qs = new URLSearchParams();
-  if (params?.q) qs.set("q", params.q);
-  if (params?.status) qs.set("status", params.status);
-  if (params?.limit !== undefined) qs.set("limit", String(params.limit));
-  if (params?.offset !== undefined) qs.set("offset", String(params.offset));
-  const query = qs.toString() ? `?${qs}` : "";
-  return apiFetch<SourceListResponse>(`/sources${query}`);
 }
 
 export async function getDatasets(params?: {
@@ -480,23 +374,6 @@ export async function getDatasetVersion(
   return apiFetch<DatasetVersionDetailResponse>(`/datasets/${datasetId}/versions/${versionId}`);
 }
 
-export async function getGraphEntities(params?: {
-  q?: string;
-  entity_type?: string;
-  source?: string;
-  limit?: number;
-  offset?: number;
-}): Promise<GraphEntityListResponse> {
-  const qs = new URLSearchParams();
-  if (params?.q) qs.set("q", params.q);
-  if (params?.entity_type) qs.set("entity_type", params.entity_type);
-  if (params?.source) qs.set("source", params.source);
-  if (params?.limit !== undefined) qs.set("limit", String(params.limit));
-  if (params?.offset !== undefined) qs.set("offset", String(params.offset));
-  const query = qs.toString() ? `?${qs}` : "";
-  return apiFetch<GraphEntityListResponse>(`/graph/entities${query}`);
-}
-
 export async function getEntities(params?: {
   q?: string;
   entity_type?: string;
@@ -512,27 +389,8 @@ export async function getEntities(params?: {
   return apiFetch<EntityListResponse>(`/entities${query}`);
 }
 
-export async function getEntityNeighbors(entityId: string): Promise<GraphNeighborsResponse> {
-  return apiFetch<GraphNeighborsResponse>(`/graph/entities/${entityId}/neighbors`);
-}
-
 export async function getEntityProfile(entityId: string): Promise<EntityProfileResponse> {
   return apiFetch<EntityProfileResponse>(`/entities/${entityId}/profile`);
-}
-
-export async function getInsightsOverview(params?: {
-  domain?: string;
-  period?: string;
-}): Promise<InsightOverviewResponse> {
-  const qs = new URLSearchParams();
-  if (params?.domain) qs.set("domain", params.domain);
-  if (params?.period) qs.set("period", params.period);
-  const query = qs.toString() ? `?${qs}` : "";
-  return apiFetch<InsightOverviewResponse>(`/insights/overview${query}`);
-}
-
-export async function getCatalogCoverage(): Promise<CatalogCoverageResponse> {
-  return apiFetch<CatalogCoverageResponse>("/catalog/coverage");
 }
 
 export async function getSeries(params?: {
@@ -608,63 +466,6 @@ export async function runAnalysisQuery(config: AnalysisViewConfig): Promise<Anal
   });
 }
 
-export async function getSavedViews(params: {
-  scope_type: "dataset" | "entity";
-  scope_id: string;
-}): Promise<SavedViewListResponse> {
-  const qs = new URLSearchParams();
-  qs.set("scope_type", params.scope_type);
-  qs.set("scope_id", params.scope_id);
-  return apiFetch<SavedViewListResponse>(`/views?${qs.toString()}`, {
-    cache: "no-store",
-  });
-}
-
-export async function createSavedView(payload: {
-  scope_type: "dataset" | "entity";
-  scope_id: string;
-  name: string;
-  description?: string | null;
-  config_json: AnalysisViewConfig;
-}): Promise<SavedViewItem> {
-  return apiFetch<SavedViewItem>("/views", {
-    method: "POST",
-    cache: "no-store",
-    headers: withDefaultHeaders({
-      "Content-Type": "application/json",
-    }),
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function updateSavedView(
-  viewId: string,
-  payload: {
-    name?: string;
-    description?: string | null;
-    config_json?: AnalysisViewConfig;
-  },
-): Promise<SavedViewItem> {
-  return apiFetch<SavedViewItem>(`/views/${viewId}`, {
-    method: "PATCH",
-    cache: "no-store",
-    headers: withDefaultHeaders({
-      "Content-Type": "application/json",
-    }),
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteSavedView(viewId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/views/${viewId}`, {
-    method: "DELETE",
-    cache: "no-store",
-    headers: withDefaultHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status} on /views/${viewId}`);
-  }
-}
 
 export async function queryCopilot(payload: CopilotQueryRequest): Promise<CopilotQueryResponse> {
   const res = await fetch(`${API_BASE}/copilot/query`, {

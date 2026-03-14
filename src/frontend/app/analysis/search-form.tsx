@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ENERGY_HUB_SOURCES } from "../../lib/energy-hub";
+import { createSearchParams } from "../../lib/search-state";
 
 export function SearchForm({
   query,
@@ -27,9 +28,10 @@ export function SearchForm({
 
   function selectSource(sourceId: string) {
     setOpen(false);
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (sourceId !== "all") params.set("source", sourceId);
+    const params = createSearchParams({
+      q: query || undefined,
+      source: sourceId !== "all" ? sourceId : undefined,
+    });
     const qs = params.toString();
     router.push(qs ? `/analysis?${qs}` : "/analysis");
   }

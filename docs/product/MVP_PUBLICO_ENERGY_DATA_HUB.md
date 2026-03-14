@@ -24,6 +24,7 @@ EPE e outras fontes entram como expansao logo apos o nucleo inicial.
 - APIs REST para catalogo, series, grafo e insights;
 - dashboards base para exploracao do acervo;
 - copilot analitico grounded em datasets, versoes e grafo.
+- arquitetura principal da UI organizada em `Analysis`, `Entities`, `Datasets` e `Copilot`, com drill-down secundario para dataset, versao e entidade.
 
 ## Quem usa
 
@@ -52,7 +53,7 @@ EPE e outras fontes entram como expansao logo apos o nucleo inicial.
 ## Criterio de aceite do MVP
 
 - pelo menos um conjunto prioritario de dados de ANEEL, ONS e CCEE esta catalogado e versionado;
-- o usuario consegue navegar datasets, versoes e entidades em uma interface unica;
+- o usuario consegue navegar `Analysis`, `Entities`, `Datasets` e `Copilot`, com detalhes secundarios para dataset, versao e entidade;
 - o Energy Graph publico responde consultas de vizinhanca e contexto;
 - o copilot analitico responde perguntas grounded em datasets e metadados;
 - a documentacao deixa claro que a fase enterprise e posterior e reutiliza essa base.

@@ -18,13 +18,19 @@ Quer acompanhar refresh, versoes e qualidade dos datasets publicos.
 
 | ID | Story | Tela principal | Endpoint principal | Entidade |
 |---|---|---|---|---|
-| US-001 | Como analista, quero listar fontes e datasets para entender o que o hub cobre | Catalogo | `GET /api/v1/sources` e `GET /api/v1/datasets` | `source`, `dataset` |
-| US-002 | Como analista, quero abrir um dataset e ver suas versoes para confiar no dado consultado | Detalhe do dataset | `GET /api/v1/datasets/{dataset_id}` e `GET /api/v1/datasets/{dataset_id}/versions` | `dataset`, `dataset_version` |
-| US-003 | Como analista, quero consultar series e observacoes historicas para analisar tendencia e comparacao | Serie | `GET /api/v1/series` e `GET /api/v1/series/{series_id}/observations` | `metric_series`, `observation` |
-| US-004 | Como consultor, quero explorar entidades e vizinhanca no Energy Graph para entender contexto setorial | Entidade / Grafo | `GET /api/v1/graph/entities` e `GET /api/v1/graph/entities/{entity_id}/neighbors` | `entity`, `relation` |
-| US-005 | Como usuario, quero ver insights prontos para UI para acelerar leitura de contexto e mudancas recentes | Overview | `GET /api/v1/insights/overview` e `GET /api/v1/insights/entities/{entity_id}` | `insight_snapshot` |
+| US-001 | Como analista, quero listar fontes e datasets para entender o que o hub cobre | Datasets | `GET /api/v1/sources` e `GET /api/v1/datasets` | `source`, `dataset` |
+| US-002 | Como analista, quero abrir um dataset e ver suas versoes para confiar no dado consultado | Datasets / detalhe secundario | `GET /api/v1/datasets/{dataset_id}` e `GET /api/v1/datasets/{dataset_id}/versions` | `dataset`, `dataset_version` |
+| US-003 | Como analista, quero consultar series e observacoes historicas para analisar tendencia e comparacao | Analysis | `GET /api/v1/series` e `GET /api/v1/series/{series_id}/observations` | `metric_series`, `observation` |
+| US-004 | Como consultor, quero explorar entidades e vizinhanca no Energy Graph para entender contexto setorial | Entities / detalhe secundario | `GET /api/v1/graph/entities` e `GET /api/v1/graph/entities/{entity_id}/neighbors` | `entity`, `relation` |
+| US-005 | Como usuario, quero ver insights prontos para UI para acelerar leitura de contexto e mudancas recentes | Analysis / Entities | `GET /api/v1/insights/overview` e `GET /api/v1/insights/entities/{entity_id}` | `insight_snapshot` |
 | US-006 | Como usuario, quero perguntar ao copilot sobre dados publicos e receber resposta grounded | Copilot | `POST /api/v1/copilot/query` | `dataset_version`, `entity` |
 | US-007 | Como operadora de dados, quero disparar refresh controlado de um dataset para manter o catalogo atualizado | Operacao interna | `POST /api/v1/admin/datasets/{dataset_id}/refresh` | `dataset_version` |
+
+Observacao de IA do frontend:
+
+- a navegacao principal do MVP fica organizada em `Analysis`, `Entities`, `Datasets` e `Copilot`;
+- detalhes de dataset, versao e entidade permanecem como rotas secundarias;
+- grafo, insights, coverage e sources continuam como capacidades do produto, mas nao como paginas top-level da UI atual.
 
 ## 3. Criterios de aceite resumidos
 

@@ -13,18 +13,10 @@ import {
 import { EnergyCanvas } from "../../components/energy-canvas";
 import { SearchForm } from "./search-form";
 import { getQueryValue, titleCaseToken } from "../../lib/energy-hub";
+import { buildPageHref, createSearchParams } from "../../lib/search-state";
 import { buildDefaultViewConfig } from "../../lib/view-defaults";
 
 export const dynamic = "force-dynamic";
-
-function buildHref(current: URLSearchParams, updates: Record<string, string | undefined>) {
-  const next = new URLSearchParams(current);
-  for (const [key, value] of Object.entries(updates)) {
-    if (value) next.set(key, value); else next.delete(key);
-  }
-  const query = next.toString();
-  return query ? `/analysis?${query}` : "/analysis";
-}
 
 export default async function AnalysisPage({
   searchParams,
@@ -35,10 +27,10 @@ export default async function AnalysisPage({
   const query = getQueryValue(resolvedSearchParams.q)?.trim() ?? "";
   const sourceFilter = getQueryValue(resolvedSearchParams.source) ?? "all";
   const requestedDatasetId = getQueryValue(resolvedSearchParams.dataset);
-  const searchState = new URLSearchParams();
-
-  if (query) searchState.set("q", query);
-  if (sourceFilter && sourceFilter !== "all") searchState.set("source", sourceFilter);
+  const searchState = createSearchParams({
+    q: query || undefined,
+    source: sourceFilter !== "all" ? sourceFilter : undefined,
+  });
 
   const datasetsResponse = await getDatasets({
     limit: 400,
@@ -110,13 +102,13 @@ export default async function AnalysisPage({
                         </summary>
                         <div className="treeItems">
                           {items.slice(0, 12).map((item) => (
-                            <Link
-                              key={item.id}
-                              href={buildHref(searchState, { dataset: item.id })}
-                              className={`treeItem ${selectedDatasetListItem?.id === item.id ? "isActive" : ""}`}
-                            >
-                              <span>{item.name}</span>
-                            </Link>
+                          <Link
+                            key={item.id}
+                            href={buildPageHref("/analysis", searchState, { dataset: item.id })}
+                            className={`treeItem ${selectedDatasetListItem?.id === item.id ? "isActive" : ""}`}
+                          >
+                            <span>{item.name}</span>
+                          </Link>
                           ))}
                         </div>
                       </details>
@@ -132,13 +124,42 @@ export default async function AnalysisPage({
 
         <div className="stack">
           {selectedDatasetListItem && initialFields && initialQuery && initialConfig && selectedDataset ? (
-            <EnergyCanvas
-              scopeLabel={selectedDataset.name}
-              initialFields={initialFields}
-              initialQuery={initialQuery}
-              initialConfig={initialConfig}
-              initialTitle={selectedDataset.name}
-            />
+            <>
+              <section className="panel heroPanel">
+                <div className="heroHeading">
+                  <div>
+                    <p className="pageKicker">
+                      {selectedDataset.source_code.toUpperCase()} / {titleCaseToken(selectedDataset.domain)}
+                    </p>
+                    <h2 className="workspaceTitle">{selectedDataset.name}</h2>
+                    <p className="pageSubtitle">
+                      {selectedDataset.description || "Sem descrição publicada para este dataset."}
+                    </p>
+                  </div>
+                  <div className="toolbarActions">
+                    <span
+                      className={`statusPill ${
+                        selectedDataset.ingestion_status === "published" ? "" : "mutedPill"
+                      }`}
+                    >
+                      {selectedDataset.ingestion_status}
+                    </span>
+                    <Link href={`/datasets/${selectedDataset.id}`} className="inlineAction">
+                      Abrir detalhe do dataset
+                    </Link>
+                    <Link href={`/copilot?dataset=${selectedDataset.id}`} className="inlineAction">
+                      Perguntar no Copilot
+                    </Link>
+                  </div>
+                </div>
+              </section>
+
+              <EnergyCanvas
+                scopeLabel={selectedDataset.name}
+                initialQuery={initialQuery}
+                initialConfig={initialConfig}
+              />
+            </>
           ) : (
             <section className="panel emptyState">
               Selecione um dataset para visualizar os dados.

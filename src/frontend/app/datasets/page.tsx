@@ -7,26 +7,9 @@ import {
   getQueryValue,
   titleCaseToken,
 } from "../../lib/energy-hub";
+import { buildPageHref, createSearchParams } from "../../lib/search-state";
 
 export const dynamic = "force-dynamic";
-
-function buildHref(
-  current: URLSearchParams,
-  updates: Record<string, string | undefined>,
-) {
-  const next = new URLSearchParams(current);
-
-  for (const [key, value] of Object.entries(updates)) {
-    if (value) {
-      next.set(key, value);
-    } else {
-      next.delete(key);
-    }
-  }
-
-  const query = next.toString();
-  return query ? `/datasets?${query}` : "/datasets";
-}
 
 export default async function DatasetsPage({
   searchParams,
@@ -37,17 +20,11 @@ export default async function DatasetsPage({
   const query = getQueryValue(resolvedSearchParams.q)?.trim() ?? "";
   const sourceFilter = getQueryValue(resolvedSearchParams.source) ?? "all";
   const sort = getQueryValue(resolvedSearchParams.sort) ?? "name";
-  const searchState = new URLSearchParams();
-
-  if (query) {
-    searchState.set("q", query);
-  }
-  if (sourceFilter && sourceFilter !== "all") {
-    searchState.set("source", sourceFilter);
-  }
-  if (sort !== "name") {
-    searchState.set("sort", sort);
-  }
+  const searchState = createSearchParams({
+    q: query || undefined,
+    source: sourceFilter !== "all" ? sourceFilter : undefined,
+    sort: sort !== "name" ? sort : undefined,
+  });
 
   const datasetsResponse = await getDatasets({
     limit: 400,
@@ -88,14 +65,14 @@ export default async function DatasetsPage({
 
           <div className="toolbarActions">
             <Link
-              href={buildHref(searchState, {
+              href={buildPageHref("/datasets", searchState, {
                 sort: sort === "updated" ? "name" : "updated",
               })}
               className="iconButton"
             >
               Ordenar
             </Link>
-            <Link href={buildHref(searchState, { sort: "source" })} className="iconButton">
+            <Link href={buildPageHref("/datasets", searchState, { sort: "source" })} className="iconButton">
               Fonte
             </Link>
           </div>
@@ -105,7 +82,7 @@ export default async function DatasetsPage({
           {ENERGY_HUB_SOURCES.map((source) => (
             <Link
               key={source.id}
-              href={buildHref(searchState, {
+              href={buildPageHref("/datasets", searchState, {
                 source: source.id === "all" ? undefined : source.id,
               })}
               className={`filterChip ${sourceFilter === source.id ? "isSelected" : ""}`}
@@ -131,10 +108,15 @@ export default async function DatasetsPage({
                 datasets.map((dataset) => (
                   <tr key={dataset.id}>
                     <td>
-                      <Link href={`/analysis?dataset=${dataset.id}`} className="tablePrimaryLink">
+                      <Link href={`/datasets/${dataset.id}`} className="tablePrimaryLink">
                         {dataset.name}
                       </Link>
                       <div className="tableSecondary">{dataset.code}</div>
+                      <div className="tableActionRow">
+                        <Link href={`/analysis?dataset=${dataset.id}`} className="tableActionLink">
+                          Analisar
+                        </Link>
+                      </div>
                     </td>
                     <td>{titleCaseToken(dataset.domain)}</td>
                     <td>{dataset.source_code.toUpperCase()}</td>
