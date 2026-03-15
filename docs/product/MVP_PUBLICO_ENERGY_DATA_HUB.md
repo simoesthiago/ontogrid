@@ -5,55 +5,74 @@
 
 ## Objetivo
 
-Entregar um hub publico de dados do setor eletrico brasileiro que combine curadoria, versionamento, ontologia, visualizacao e IA aplicada. O MVP precisa ser util mesmo para quem ainda nao integrou nenhum dado proprietario.
+Entregar um hub publico de dados do setor eletrico brasileiro que combine catalogo amplo, versionamento, entidades canonicas, visualizacao estruturada e copilot grounded. O MVP quer **catalogar os 345 datasets inventariados** de ANEEL, ONS e CCEE, mesmo que nem todos estejam ingeridos e publicados em todo ambiente.
 
-## Fontes iniciais fechadas
+## Fontes e cobertura alvo
 
-- **ANEEL**: bases regulatarias, tarifarias e cadastrais priorizadas para navegacao e contexto.
-- **ONS**: series operacionais e datasets de rede/operacao em formatos consumiveis.
-- **CCEE**: datasets publicos de preco e mercado liberados para consulta publica.
+- **ANEEL**: 69 datasets inventariados
+- **ONS**: 80 datasets inventariados
+- **CCEE**: 196 datasets inventariados
+- **Total alvo do catalogo**: 345 datasets
 
-EPE e outras fontes entram como expansao logo apos o nucleo inicial.
+O estado oficial de catalogacao e cobertura do repo fica em [CATALOG_STATUS.md](/C:/Users/tsimoe01/coding/ontogrid/docs/datasets/CATALOG_STATUS.md).
+
+## Arquitetura principal da UX
+
+O produto tem **5 paginas top-level**:
+
+1. `Analysis`: o usuario escolhe um dataset e recebe tabelas e graficos estruturados sobre esse dataset.
+2. `Entities`: eixo canonico de navegacao e agregacao cross-dataset. Nao e browser de ontologia geral.
+3. `Datasets`: catalogo operacional com status, familia, fonte, cobertura e entrada para detalhe e versoes.
+4. `Copilot`: IA grounded em datasets, entidades, versoes e metadados.
+5. `Settings`: pagina top-level prevista, ainda nao construida.
+
+Drill-downs secundarios continuam existindo para dataset, versao e entidade.
+
+## Regra de produto sobre entidades e grafo
+
+- `Entities` e a experiencia principal de identidade setorial do produto.
+- Uma entidade e um substantivo recorrente em muitos datasets, com identidade resolvivel e que merece experiencia propria.
+- O grafo e a infraestrutura de suporte para vizinhanca, reconciliacao e contexto relacional.
+- Neo4j continua no MVP, mas nao define a IA principal do frontend.
 
 ## Capacidade minima do MVP
 
-- catalogo de fontes e datasets publicos;
-- refresh e versionamento de datasets;
-- harmonizacao temporal e semantica;
-- Energy Graph publico com entidades, aliases e relacoes;
-- APIs REST para catalogo, series, grafo e insights;
-- dashboards base para exploracao do acervo;
-- copilot analitico grounded em datasets, versoes e grafo.
-- arquitetura principal da UI organizada em `Analysis`, `Entities`, `Datasets` e `Copilot`, com drill-down secundario para dataset, versao e entidade.
+- catalogo completo dos 345 datasets inventariados;
+- refresh e versionamento dos datasets com adapter implementado;
+- camada curada para `Analysis`, `Entities` e `Copilot`;
+- entidades canonicas, aliases e relacoes setoriais;
+- APIs REST para catalogo, series, cobertura, entidades, grafo, insights e copilot;
+- copilot analitico grounded em dados publicados e evidencia rastreavel.
 
-## Quem usa
+## Regra de ingestao e ambiente local
 
-- analistas de mercado e regulatorio;
-- comercializadoras e consultorias;
-- pesquisadores e energytechs;
-- time interno de produto, estrategia e dados;
-- futuros clientes enterprise que querem validar a ontologia antes de integrar dados privados.
+- o frontend nunca carrega arquivo bruto;
+- o backend serve apenas a camada curada;
+- um `dataset_version` pode ser composto por multiplos arquivos de origem;
+- o ambiente local deve usar `catalog` ou `sample` por padrao;
+- ingestao live pesada fica para uso explicito ou ambiente centralizado.
 
 ## Valor entregue sem onboarding de cliente
 
-- acesso rapido a dados curados e versionados;
-- visao unificada de entidades e relacoes do setor;
-- menos trabalho manual para reconciliar nomes, codigos e janelas temporais;
-- resposta guiada por IA com citacoes de datasets e versoes;
-- material demonstravel para vendas, parcerias e design partners.
+- acesso rapido ao universo de datasets publicos do repositorio;
+- navegacao por entidades canonicas cross-dataset;
+- exploracao estruturada de datasets priorizados;
+- visao clara do que esta apenas catalogado, do que ja tem adapter e do que ja foi publicado em um ambiente;
+- resposta guiada por IA com citacoes de datasets, versoes e entidades.
 
 ## O que o MVP nao precisa
 
 - SCADA, historian, ERP, OMS, CMMS ou GIS do cliente;
 - upload manual de planilhas do cliente como fluxo principal;
-- regras de health score por ativo privado;
-- alertas operacionais baseados em sensor;
-- workflows complexos de manutencao ou field service.
+- grafo como pagina principal da UX;
+- download local completo do universo real de dados por padrao;
+- workflow operacional rico, field assistant ou forecasting pesado.
 
 ## Criterio de aceite do MVP
 
-- pelo menos um conjunto prioritario de dados de ANEEL, ONS e CCEE esta catalogado e versionado;
-- o usuario consegue navegar `Analysis`, `Entities`, `Datasets` e `Copilot`, com detalhes secundarios para dataset, versao e entidade;
-- o Energy Graph publico responde consultas de vizinhanca e contexto;
-- o copilot analitico responde perguntas grounded em datasets e metadados;
-- a documentacao deixa claro que a fase enterprise e posterior e reutiliza essa base.
+- os **345 datasets** estao catalogados no produto;
+- a documentacao deixa claro quantos datasets estao catalogados, com adapter e publicados;
+- a navegacao principal do app esta organizada em `Analysis`, `Entities`, `Datasets`, `Copilot` e `Settings`;
+- `Entities` esta descrita como eixo canonico cross-dataset e nao como browser de ontologia geral;
+- o runtime local nao depende de baixar o universo completo de dados reais para subir o app;
+- a documentacao diferencia claramente estado do repo de estado operacional do ambiente.

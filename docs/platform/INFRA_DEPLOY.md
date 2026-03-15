@@ -1,34 +1,29 @@
 # Infraestrutura e Deploy - OntoGrid MVP publico v1
 
-## 1. Ambientes
+## Ambientes
 
-| Ambiente | Objetivo | Forma |
+| Ambiente | Objetivo | Regra |
 |---|---|---|
-| Local | Desenvolvimento diario | `docker compose` |
-| Staging inicial | Validacao interna e demos | VM unica com a mesma topologia do compose |
+| Local | Desenvolvimento diario | `docker compose` com bootstrap leve |
+| Shared/Staging | Validacao interna e demos | Ingestao live controlada |
 | Producao | Fase posterior | Fora do escopo desta rodada |
 
-## 2. Componentes locais
+## Componentes locais
 
 | Servico | Papel |
 |---|---|
-| `api` | Backend FastAPI e operacoes administrativas do hub |
+| `api` | Backend FastAPI, bootstrap e operacoes administrativas do hub |
 | `frontend` | Next.js |
-| `timescaledb` | PostgreSQL + TimescaleDB para metadados e series |
-| `neo4j` | Energy Graph publico |
+| `timescaledb` | PostgreSQL + TimescaleDB para catalogo, versoes e series |
+| `neo4j` | Vizinhanca e relacoes do eixo `Entities` |
 | `redis` | Cache e apoio ao copilot |
 
-## 3. Arquivos de bootstrap
-
-- [docker-compose.yml](../docker-compose.yml)
-- [.env.example](../.env.example)
-- [src/backend/Dockerfile](../src/backend/Dockerfile)
-- [src/frontend/Dockerfile](../src/frontend/Dockerfile)
-- [scripts/setup.ps1](../scripts/setup.ps1)
-
-## 4. Variaveis minimas
+## Variaveis minimas
 
 - `APP_ENV`
+- `ARTIFACTS_DIR`
+- `BOOTSTRAP_MODE`
+- `BOOTSTRAP_DATASET_CODES`
 - `POSTGRES_*`
 - `DATABASE_URL`
 - `NEO4J_URI`
@@ -41,53 +36,47 @@
 - `COPILOT_CACHE_TTL_SECONDS`
 - `NEXT_PUBLIC_API_BASE_URL`
 
-`JWT_SECRET` e opcional e so entra quando a camada de conta/autenticacao do produto for ativada.
-
-## 5. Rotina local
+## Rotina local
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up --build
 ```
 
-No runtime oficial, o servico `api` roda:
+No runtime local oficial, o servico `api` roda:
 
-1. `alembic upgrade head`
-2. `python -m app.cli bootstrap-live-data`
-3. `uvicorn app.main:app ...`
+1. `python -m app.cli bootstrap`
+2. `uvicorn app.main:app ...`
 
-Isso garante catalogo seedado e datasets faltantes materializados antes da API aceitar trafego.
+`BOOTSTRAP_MODE` controla o comportamento:
 
-Backend:
+- `catalog`: sobe apenas o catalogo dos 345 datasets
+- `sample`: sobe o catalogo e carrega fixtures leves dos datasets com adapter
+- `selected_live`: sobe o catalogo e ingere apenas os datasets listados em `BOOTSTRAP_DATASET_CODES`
+
+Default recomendado: `BOOTSTRAP_MODE=sample`.
+
+## Backend isolado
 
 ```powershell
 cd src/backend
 pip install -e .[dev]
-alembic upgrade head
-python -m app.cli bootstrap-live-data
+python -m app.cli bootstrap-catalog
+python -m app.cli bootstrap-sample-data
 python -m pytest
 ```
 
-Frontend:
+Para ingestao live selecionada:
 
 ```powershell
-cd src/frontend
-npm install
-npm run dev
+$env:BOOTSTRAP_MODE="selected_live"
+$env:BOOTSTRAP_DATASET_CODES="carga_horaria_submercado,pld_horario_submercado"
+python -m app.cli bootstrap-selected-live-data
 ```
 
-## 6. Deploy inicial recomendado
+## Regra de operacao
 
-- staging em VM unica;
-- banco e grafo persistidos em volumes;
-- CI apenas para lint/test/build na primeira etapa;
-- CD manual ou semiautomatico ate o fluxo estabilizar.
-
-## 7. Fora do escopo
-
-- Kubernetes.
-- alta disponibilidade.
-- observabilidade completa com Prometheus/Grafana.
-- segredos gerenciados por vault.
-- backups automatizados de producao.
-- orquestracao enterprise de conectores privados.
+- o ambiente local nao deve baixar o universo completo de dados reais por padrao;
+- o repo continua catalogando os 345 datasets independentemente do modo de bootstrap;
+- arquivos originais ficam no backend/storage;
+- `publicado` depende do banco e dos refresh jobs daquele ambiente.

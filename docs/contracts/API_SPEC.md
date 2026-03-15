@@ -57,6 +57,7 @@ Response `200`:
 Observacao operacional:
 
 - o catalogo exposto por `/datasets` inclui o universo inventariado em `docs/datasets`, nao apenas os datasets ja ingeridos;
+- o snapshot oficial do repo sobre esse universo fica em `docs/datasets/catalog_status.json` e `docs/datasets/CATALOG_STATUS.md`;
 - `ingestion_status` pode ser `documented_only`, `adapter_enabled` ou `published`.
 
 ### `GET /api/v1/datasets`
@@ -248,6 +249,12 @@ Response `200`:
 ```
 
 ## 4. Coverage
+
+Observacoes operacionais:
+
+- este endpoint descreve o estado do ambiente em execucao, nao um snapshot estatico do git;
+- o estado oficial do repo sobre os 345 datasets fica em `docs/datasets/catalog_status.json` e `docs/datasets/CATALOG_STATUS.md`;
+- `published_total` depende do banco e dos refresh jobs daquele ambiente.
 
 ### `GET /api/v1/catalog/coverage`
 
@@ -824,7 +831,10 @@ Usado para health check de servico. Nao faz parte do contrato de produto.
 
 ## 13. Bootstrap oficial
 
-- `docker compose up --build` aplica migrations Alembic e executa o bootstrap live do catalogo antes de subir a API;
+- `docker compose up --build` executa `python -m app.cli bootstrap` antes de subir a API;
+- `BOOTSTRAP_MODE=sample` e o default recomendado para desenvolvimento local;
+- `BOOTSTRAP_MODE=selected_live` so deve ser usado com `BOOTSTRAP_DATASET_CODES`;
+- o runtime local nao pressupoe ingestao live de todos os datasets catalogados;
 - o startup normal do app nao cria schema via ORM e assume banco migrado.
 
 ## 14. Fora do contrato do MVP publico

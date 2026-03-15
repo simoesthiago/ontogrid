@@ -1,110 +1,81 @@
 # Arquitetura Tecnica - OntoGrid Energy Data Hub MVP
 
-Este documento descreve apenas a arquitetura necessaria para iniciar a implementacao do MVP publico. A fonte de verdade dos contratos HTTP e [API_SPEC.md](../contracts/API_SPEC.md).
+Este documento descreve a arquitetura necessaria para o MVP publico com **catalogo de 345 datasets**, UX principal em **5 paginas** e ingestao local leve por padrao. A fonte de verdade dos contratos HTTP continua sendo [API_SPEC.md](../contracts/API_SPEC.md).
 
-## 1. Objetivo arquitetural
+## Objetivo arquitetural
 
 Entregar um produto que permita:
 
-- ingerir dados publicos de ANEEL, ONS e CCEE;
-- curar e versionar datasets com lineage;
-- consultar series e entidades em uma semantica unificada;
-- navegar um Energy Graph publico;
-- servir insights e dashboards base;
-- responder perguntas via copilot analitico grounded.
+- catalogar os 345 datasets inventariados de ANEEL, ONS e CCEE;
+- ingerir seletivamente datasets priorizados sem exigir download total no ambiente local;
+- servir `Analysis`, `Entities`, `Datasets`, `Copilot` e `Settings`;
+- consolidar entidades canonicas cross-dataset;
+- responder perguntas grounded em datasets, versoes e entidades.
 
-## 2. Decisoes fechadas
+## Decisoes fechadas
 
-- Monolito modular.
-- FastAPI como backend HTTP e orquestrador do copilot.
-- PostgreSQL 16 + TimescaleDB para metadados, versoes, series e observacoes.
-- Neo4j 5 para o Energy Graph publico.
-- Redis 7 para cache e montagem rapida de contexto do copilot.
-- Refresh por pulls agendados, downloads versionados e crawlers especificos.
-- Sem `tenant_id` no nucleo publico.
-- Sem GraphQL e sem WebSocket no primeiro corte.
+- monolito modular;
+- FastAPI como backend HTTP e orquestrador do copilot;
+- PostgreSQL 16 + TimescaleDB para catalogo, versoes, series e observacoes;
+- Neo4j 5 para suporte de vizinhanca e relacoes do eixo `Entities`;
+- Redis 7 para cache e contexto do copilot;
+- inventario completo no catalogo, ingestao seletiva por ambiente;
+- sem `tenant_id` no nucleo publico;
+- sem GraphQL e sem WebSocket no primeiro corte.
 
-## 3. Responsabilidade por componente
+## Responsabilidade por componente
 
 | Componente | Responsabilidade |
 |---|---|
-| FastAPI | Catalogo, series, grafo, insights, endpoint do copilot e operacoes administrativas |
-| Worker mode do backend | Refresh agendado, parsing, normalizacao, projeção de grafo e snapshot de insights |
-| PostgreSQL/TimescaleDB | `source`, `dataset`, `dataset_version`, `refresh_job`, `metric_series`, `observation`, `insight_snapshot`, `copilot_trace` |
-| Neo4j | Entidades e relacoes do Energy Graph publico |
-| Redis | Cache de consultas frequentes e montagem de contexto do copilot |
-| Next.js | IA principal com `Analysis`, `Entities`, `Datasets` e `Copilot`, alem de drill-down secundario para dataset, versao e entidade |
+| FastAPI | Catalogo, analysis, entidades, coverage, series, insights, copilot e operacoes administrativas |
+| Worker mode do backend | Bootstrap, refresh, parsing, normalizacao e publicacao |
+| PostgreSQL/TimescaleDB | `source`, `dataset`, `dataset_version`, `refresh_job`, `metric_series`, `observation` e metadados da camada curada |
+| Neo4j | Vizinhanca e relacoes projetadas para o eixo `Entities` |
+| Redis | Cache de consultas frequentes e apoio ao copilot |
+| Next.js | IA principal com `Analysis`, `Entities`, `Datasets`, `Copilot` e `Settings` |
 
-## 4. Limites entre modulos do backend
+## Regra principal de dados
 
-```text
-app/
-|-- api/         # Rotas e composicao HTTP
-|-- core/        # Config, logging, dependencies e scheduling
-|-- schemas/     # Contratos Pydantic
-|-- services/    # Regra de negocio do hub publico
-|-- ingestion/   # Refresh, parsing, normalizacao e versionamento
-`-- copilot/     # Recuperacao de contexto, grounding e resposta
-```
+- o frontend nunca carrega arquivo bruto;
+- o backend guarda arquivo original e serve a camada curada;
+- `Analysis`, `Entities` e `Copilot` consultam apenas a camada curada;
+- um `dataset_version` pode representar multiplos arquivos de origem;
+- processamento de arquivo grande deve ser por lote/streaming, nao por carga integral em memoria.
 
-Regras:
+## Fluxos principais
 
-- `api` nao implementa regra de negocio.
-- `schemas` espelham o contrato de API e os payloads internos minimos.
-- `ingestion` concentra extracao, parse, versionamento e lineage.
-- `services` concentra harmonizacao publica, evidencia, projections e agregacao de perfis.
-- `copilot` orquestra contexto e resposta, mas nao vira camada de logica opaca sem citacao.
+### 1. Catalogo e cobertura
 
-## 5. Fluxos principais
+1. `docs/datasets/*.md` definem o inventario base.
+2. `src/backend/app/catalog_inventory.py` materializa esse inventario como catalogo do repo.
+3. `docs/datasets/catalog_status.json` e `docs/datasets/CATALOG_STATUS.md` registram o snapshot oficial do repo.
+4. `GET /api/v1/catalog/coverage` mostra o estado operacional do ambiente.
 
-### 5.1 Refresh de dataset publico
+### 2. Bootstrap local
 
-1. Um refresh e disparado por agenda ou via `POST /api/v1/admin/datasets/{dataset_id}/refresh`.
-2. O backend cria `refresh_job`.
-3. O artefato bruto e baixado ou consultado na fonte.
-4. O parser normaliza os dados em um payload generico do kernel.
-5. O harmonizador publico aplica regras deterministicas de match e persiste a camada semantica seletiva.
-6. Series, observacoes e relacoes sao atualizadas sem substituir o kernel.
-7. Evidencias publicas, projecao Neo4j e snapshots de insight sao rebuildados quando necessario.
+1. `bootstrap-catalog` aplica migrations e seeda o catalogo dos 345 datasets.
+2. `bootstrap-sample-data` materializa apenas fixtures leves dos datasets com adapter.
+3. `bootstrap-selected-live-data` materializa apenas os datasets listados em `BOOTSTRAP_DATASET_CODES`.
+4. `docker compose` local usa `BOOTSTRAP_MODE=sample` por padrao.
 
-### 5.2 Navegacao principal da UI
+### 3. Navegacao principal da UI
 
-1. `Datasets` organiza o catalogo publico e leva ao detalhe secundario de dataset e versoes.
-2. `Analysis` usa `GET /api/v1/datasets`, `GET /api/v1/analysis/datasets/{dataset_id}/fields` e `POST /api/v1/analysis/query`.
-3. `Entities` usa `GET /api/v1/entities` e `GET /api/v1/entities/{entity_id}/profile`.
-4. `Copilot` permanece uma pagina propria para perguntas grounded, mas pode receber contexto opcional de dataset e entidade por query params.
+1. `Datasets` organiza o catalogo completo e mostra status de cobertura.
+2. `Analysis` opera sobre um dataset selecionado e usa queries da camada curada.
+3. `Entities` lista entidades canonicas e leva ao perfil consolidado.
+4. `Copilot` recebe pergunta e busca grounding em datasets, versoes e entidades.
+5. `Settings` permanece top-level, ainda nao implementada como fluxo core.
 
-### 5.3 Drill-down e capacidades secundarias
+## Ambientes
 
-1. O detalhe de dataset continua responsavel por versoes, schema, series, observacoes e refresh jobs.
-2. O detalhe de entidade continua responsavel por facetas, evidencia, series e contexto relacional.
-3. Grafo, insights, coverage e sources continuam como capacidades e contratos de backend, mas nao como paginas top-level da IA atual.
+| Ambiente | Objetivo | Regra |
+|---|---|---|
+| Local | Desenvolvimento diario | `catalog` ou `sample`; nunca ingestao live total por padrao |
+| Shared/Staging | Validacao interna e demos | Ingestao live controlada e publicacao de datasets priorizados |
+| Prod | Fase posterior | Operacao centralizada com storage apropriado |
 
-### 5.4 Copilot analitico
+## Regra de leitura do grafo
 
-1. O usuario envia pergunta para `POST /api/v1/copilot/query`.
-2. O backend resolve datasets, versoes, entidades e janelas temporais relevantes.
-3. O copilot monta contexto grounded em observacoes, metadados, evidencia publicada e vizinhanca do grafo.
-4. A resposta retorna com citacoes e perguntas de seguimento.
-
-## 6. Modelo de deployment inicial
-
-- runtime oficial de desenvolvimento: `docker compose` com FastAPI, TimescaleDB/PostgreSQL, Neo4j, Redis e Next.js;
-- SQLite fica restrito a testes locais rapidos e ambientes efemeros;
-- staging inicial: mesma topologia do compose em uma VM unica;
-- producao posterior: fora do escopo desta etapa.
-
-## 7. Tradeoffs assumidos
-
-- O MVP privilegia dados publicos e explicabilidade sobre profundidade enterprise.
-- O grafo nasce publico e canonico antes de ser federado com dados privados.
-- O copilot e analitico e grounded; agentic workflows ficam para depois.
-- A mesma base tecnica deve suportar a futura fase enterprise sem reescrever semantica e lineage.
-
-## 8. Itens explicitamente adiados
-
-- conectores privados para SCADA, ERP, OMS, CMMS e GIS;
-- tenancy como modelo central do produto;
-- workflow rico de casos e field assistant;
-- RAG sobre documentos privados;
-- reliability e classificacao de causas com dados internos de cliente.
+- `Entities` e a experiencia de produto.
+- Neo4j e grafo publico continuam importantes, mas como infraestrutura de suporte.
+- Endpoints de grafo permanecem como capacidade tecnica e enriquecimento, nao como pagina top-level da UX.

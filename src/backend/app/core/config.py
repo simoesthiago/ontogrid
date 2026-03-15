@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "sqlite:///./ontogrid.db"
     artifacts_dir: str = "./data/artifacts"
+    bootstrap_mode: str = "sample"
+    bootstrap_dataset_codes: str = ""
     seed_demo_catalog: bool = False
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: int = 300
@@ -77,6 +79,10 @@ class Settings(BaseSettings):
     @property
     def artifacts_path(self) -> Path:
         return Path(self.artifacts_dir).resolve()
+
+    @property
+    def bootstrap_dataset_code_list(self) -> list[str]:
+        return [item.strip() for item in self.bootstrap_dataset_codes.split(",") if item.strip()]
 
     @property
     def neo4j_enabled(self) -> bool:

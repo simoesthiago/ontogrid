@@ -1,81 +1,102 @@
 # Pipeline de Ingestao - OntoGrid Energy Data Hub MVP
 
-Este documento descreve a ingestao suportada no MVP publico.
+Este documento descreve a ingestao suportada no MVP publico com linguagem simples e foco em escalabilidade.
 
-## 1. Escopo suportado
+## Ideia central
 
-### Entrada
+O produto quer conhecer **345 datasets** no catalogo, mas isso **nao** significa baixar historico completo de tudo em todo ambiente.
 
-- pulls agendados em APIs publicas;
-- downloads versionados de arquivos publicos;
-- crawlers especificos quando a fonte nao expuser API consistente.
+O fluxo correto e:
 
-### Formatos
+1. manter o catalogo completo;
+2. ingerir seletivamente apenas o que cada ambiente precisa;
+3. servir o app a partir de uma camada curada;
+4. nunca mandar arquivo bruto para o frontend.
 
-- JSON
+## Tres camadas de dado
+
+### 1. Arquivo original
+
+E o arquivo como veio da fonte:
+
 - CSV
 - XLSX
+- JSON
 - ZIP
+- um arquivo por ano
+- varios arquivos para o mesmo dataset
 
-### Fontes consideradas
+Esses arquivos ficam no backend/storage.
 
-- ONS Dados Abertos e distribuicoes publicas equivalentes;
-- ANEEL em bases regulatorias e cadastrais priorizadas;
-- CCEE em datasets publicos de mercado.
+### 2. Camada curada
 
-## 2. O que fica para depois
+E a representacao organizada que o produto realmente consulta:
 
-- upload manual de arquivo do cliente;
-- lote JSON do cliente por API;
-- OPC-UA em tempo real;
-- conectores privados para SCADA, ERP, OMS, CMMS e GIS;
-- reprocessamento historico massivo multi-tenant.
+- `dataset_version`
+- `entity`
+- `entity_alias`
+- `relation`
+- `metric_series`
+- `observation`
 
-## 3. Fluxo do refresh
+### 3. Resposta do app
 
-1. Scheduler ou operacao interna dispara refresh.
-2. Backend registra `refresh_job`.
-3. O artefato bruto e baixado ou consultado na origem.
-4. O parser valida schema, checksum e cobertura temporal.
-5. O dado e normalizado para `dataset_version`, `metric_series`, `observation`, `entity` e `relation`.
-6. O grafo publico e os snapshots de insight sao atualizados quando aplicavel.
-7. O job e marcado como `published`, `failed` ou `partial`.
+E o recorte enviado para o frontend:
 
-## 4. Contrato interno do job
+- tabela
+- grafico
+- cards
+- resposta do copilot
 
-Campos esperados:
+O frontend nunca baixa o bruto inteiro.
 
-- `dataset_id`
-- `source_type=api_pull|scheduled_download|crawler`
-- `trigger_type=schedule|manual`
-- `force` opcional
+## Regras de modelagem da ingestao
 
-## 5. Regras de validacao
+- um `dataset` pode ter `N dataset_version`;
+- um `dataset_version` pode ter `N dataset_artifact`;
+- um dataset pode ser composto por varios arquivos de origem;
+- os arquivos originais ficam preservados no backend/storage;
+- a camada curada e o que abastece `Analysis`, `Entities` e `Copilot`.
 
-- todo refresh precisa apontar para `source`, `dataset` e `dataset_version`;
-- artefato bruto e imutavel depois do download;
-- timestamps externos sao normalizados para UTC;
-- parser registra `schema_version` e `checksum`;
-- falha nunca apaga a ultima versao valida publicada;
-- lineage minimo precisa permitir rastrear dataset, versao e refresh.
+## Regra de processamento
 
-## 6. Saidas do pipeline
+O alvo arquitetural **nao** e:
 
-- linhas em `dataset_version`;
-- contadores e status em `refresh_job`;
-- entidades e relacoes canonicas para o grafo;
-- series e observacoes prontas para consulta;
-- snapshots de insight prontos para UI.
+- ler arquivo inteiro em memoria;
+- juntar anos inteiros em um unico arquivo gigante;
+- fazer o frontend processar dataset bruto.
 
-## 7. Observabilidade minima
+O alvo arquitetural e:
 
-- tempo total do refresh;
-- tamanho e hash do artefato bruto;
-- linhas lidas, aceitas e descartadas;
-- ultima versao valida por dataset;
-- resumo de erros de parse e normalizacao;
-- logs com `source_code`, `dataset_code`, `version_id` e `refresh_job_id`.
+- processamento por lote ou streaming;
+- suporte a datasets particionados por ano, mes ou recurso;
+- publicacao seletiva da camada curada;
+- reprocessamento rastreavel por versao e por artifact.
 
-## 8. Regra de escopo
+## Ambientes e bootstrap
 
-No MVP publico, ingestao existe para materializar o hub regulatorio. Fluxos de upload e integração do cliente entram apenas na fase enterprise.
+### Local
+
+- conhece os 345 datasets no catalogo;
+- usa `BOOTSTRAP_MODE=catalog` ou `BOOTSTRAP_MODE=sample`;
+- pode usar `BOOTSTRAP_MODE=selected_live` apenas para poucos datasets escolhidos;
+- nunca deve baixar o universo completo por padrao.
+
+### Shared/Staging/Prod
+
+- concentra ingestao live pesada;
+- publica datasets priorizados;
+- preserva os arquivos originais e a camada curada em storage apropriado.
+
+## Comandos oficiais
+
+- `python -m app.cli bootstrap-catalog`
+- `python -m app.cli bootstrap-sample-data`
+- `python -m app.cli bootstrap-selected-live-data`
+
+## Observabilidade minima
+
+- dataset, versao e artifact precisam ser rastreaveis;
+- refresh job precisa mostrar leitura, escrita e falha;
+- `publicado` precisa ser lido por ambiente, nao por snapshot do git;
+- coverage do ambiente precisa ser separado do snapshot do repo.

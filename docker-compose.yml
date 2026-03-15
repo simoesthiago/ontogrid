@@ -4,10 +4,12 @@ services:
       context: .
       dockerfile: ./src/backend/Dockerfile
     command: >
-      sh -c "python -m app.cli bootstrap-live-data &&
+      sh -c "python -m app.cli bootstrap &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000"
     env_file:
       - .env
+    volumes:
+      - api_artifacts:/app/data
     ports:
       - "8000:8000"
     depends_on:
@@ -85,6 +87,7 @@ services:
       retries: 10
 
 volumes:
+  api_artifacts:
   timescaledb_data:
   neo4j_data:
   redis_data:
